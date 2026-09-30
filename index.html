@@ -1,0 +1,1491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Polus</title>
+<meta name="description" content="Polus builds websites and systems that turn attention into paying clients.">
+<link rel="icon" href="assets/polus-symbol-white.svg">
+<meta property="og:title" content="Polus">
+<meta property="og:description" content="Websites and systems that turn attention into paying clients.">
+<meta property="og:image" content="assets/bw/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#02030a;
+  --ink:#eeeae2;
+  --dim:#9097ab;
+  --faint:rgba(238,234,226,.14);
+  --star:#dfe9ff;
+  --ember:#f2f2f2;
+  --serif:"Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans:"Geist", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --pull:0;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--void);color:var(--ink);font-family:var(--sans);font-weight:400;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:1.5px solid var(--star);outline-offset:4px;border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- Layers ---------- */
+.layer{position:fixed;inset:0}
+#space{z-index:1;opacity:0;transition:opacity 1s ease}
+/* Photographic backgrounds and floating layers, moved in JS with the camera */
+#bgs{z-index:0;pointer-events:none;background:var(--void)}
+.bg-dim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(2,3,10,0) 30%,rgba(2,3,10,.55) 100%)}
+
+#space.on{opacity:1}
+#hero{z-index:5;background:#000;overflow:hidden}
+.hero-stage{position:absolute;inset:0;transform-origin:var(--ox,50%) var(--oy,50%);will-change:transform}
+.hero-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hx,50%) 50%}
+.hero-stage img{display:none}
+#hero.frame .hero-stage img{display:block}
+#hero.frame .hero-stage video{display:none}
+#gateCanvas{position:absolute;inset:0;pointer-events:none}
+
+/* ---------- Intro ---------- */
+.skip{position:absolute;right:max(24px,env(safe-area-inset-right));bottom:calc(24px + var(--safe-b));z-index:3;font-size:.8125rem;letter-spacing:.02em;color:rgba(238,234,226,.62);padding:10px 14px;border-radius:999px;transition:color .3s,background .3s}
+.skip:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+/* 3D intro layer */
+#intro{z-index:7;background:#010207;transition:opacity .8s ease}
+#intro canvas{position:absolute;inset:0;display:block;width:100%;height:100%;filter:grayscale(1) contrast(1.06)}
+#intro.done{opacity:0;pointer-events:none}
+
+/* ---------- Gate ---------- */
+/* Big wordmark on the gate image, placed in JS in the open dark space */
+.gate-wm{position:absolute;left:var(--wm-left,50%);top:var(--wm-top,6vh);width:var(--wm-w,58vw);z-index:3;color:#fff;opacity:0;transform:translate(-50%,14px);filter:drop-shadow(0 6px 36px rgba(0,0,0,.55));transition:opacity 1.8s ease .15s,transform 2.2s cubic-bezier(.19,1,.22,1) .15s;pointer-events:none}
+#hero.gate .gate-wm{opacity:1;transform:translate(-50%,0)}
+.gate-wm svg{display:block;width:100%;height:auto;overflow:visible}
+.gate-wm .flare{position:absolute;left:31.5%;top:49%;width:34%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%) scale(.3);opacity:0;background:radial-gradient(circle,rgba(223,233,255,.5) 0%,rgba(223,233,255,.12) 30%,transparent 62%);transition:transform 2.4s cubic-bezier(.19,1,.22,1) .6s,opacity 2s ease .6s}
+#hero.gate .gate-wm .flare{opacity:1;transform:translate(-50%,-50%) scale(1);animation:breathe 5s ease-in-out 3s infinite}
+#hero.leaving .gate-wm{opacity:0;transition:opacity .5s ease}
+/* Dive: the camera rushes into the light in his hand while the starfield takes over underneath */
+#hero.diving .hero-stage{transform:scale(3.4);filter:brightness(2.4) contrast(1.1);transition:transform 1.2s cubic-bezier(.45,.05,.8,.45),filter 1.2s ease-in}
+#hero.diving{opacity:0;transition:opacity .8s ease .4s}
+#hero.diving .enter,#hero.diving #gateCanvas{opacity:0;transition:opacity .3s ease}
+/* The statue cut from the gate image, layered over the wordmark so the letters sit behind him */
+.statue{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hx,50%) 50%;z-index:4;pointer-events:none;display:none;transform-origin:var(--ox,50%) var(--oy,50%)}
+#hero.frame .statue{display:block}
+#hero.diving .statue{transform:scale(3.4);filter:brightness(2.4) contrast(1.1);transition:transform 1.2s cubic-bezier(.45,.05,.8,.45),filter 1.2s ease-in}
+.enter:focus-visible{outline:none}.enter:focus-visible .enter-star{outline:1.5px solid var(--star);outline-offset:6px}
+.enter{position:absolute;left:0;top:0;z-index:5;display:flex;flex-direction:column;align-items:center;gap:14px;transform:translate(-50%,-50%);opacity:0;pointer-events:none;transition:opacity 1.4s ease .5s}
+#hero.gate .enter{opacity:1;pointer-events:auto}
+.enter-star{position:relative;width:88px;height:88px;display:grid;place-items:center;border-radius:50%}
+.enter-star::before{content:"";position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(circle,rgba(223,233,255,calc(.28 + var(--pull)*.35)) 0%,rgba(223,233,255,0) 62%);transform:scale(calc(.9 + var(--pull)*.5));transition:transform .4s ease;animation:breathe 4.5s ease-in-out infinite}
+.enter-star svg{width:64px;height:64px;position:relative;filter:drop-shadow(0 0 calc(6px + var(--pull)*14px) rgba(223,233,255,.9))}
+.enter-star .ring{transform-origin:50% 50%;animation:orbit 16s linear infinite}
+.enter-label{font-family:var(--serif);font-size:1.375rem;letter-spacing:.01em;white-space:nowrap;text-shadow:0 0 18px rgba(0,0,0,.8)}
+.enter-label small{display:block;font-family:var(--sans);font-size:.75rem;color:rgba(238,234,226,.6);text-align:center;margin-top:2px;letter-spacing:.02em}
+@keyframes breathe{50%{opacity:.6}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+
+/* ---------- Chrome (after entering) ---------- */
+.chrome{position:fixed;z-index:20;opacity:0;pointer-events:none;transition:opacity .8s ease}
+body.inside .chrome{opacity:1;pointer-events:auto}
+body.contact-open .start{opacity:0;pointer-events:none}
+.home{left:clamp(16px,3vw,36px);top:calc(clamp(14px,2.4vw,28px) + var(--safe-t));display:flex;align-items:center;gap:12px;padding:6px 8px 6px 4px;border-radius:999px}
+.home svg{width:40px;height:40px;transition:transform .6s ease}
+.home:hover svg{transform:rotate(-24deg)}
+.start{right:clamp(16px,3vw,36px);top:calc(clamp(14px,2.4vw,28px) + var(--safe-t));padding:11px 18px;border:1px solid rgba(238,234,226,.28);border-radius:999px;font-size:.875rem;background:rgba(2,3,10,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .3s,border-color .3s}
+.start:hover{background:rgba(238,234,226,.1);border-color:rgba(238,234,226,.5)}
+.wa{right:clamp(16px,3vw,36px);bottom:calc(clamp(16px,3vw,32px) + var(--safe-b));display:flex;align-items:center;gap:10px;text-decoration:none}
+.wa-orb{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#2e2e2e,#0c0c0c 70%);border:1px solid rgba(255,255,255,.24);box-shadow:0 0 24px rgba(255,255,255,.08);transition:box-shadow .3s,transform .3s}
+.wa:hover .wa-orb{box-shadow:0 0 34px rgba(255,255,255,.22);transform:scale(1.05)}
+.wa-orb svg{width:22px;height:22px}
+.wa-tip{font-size:.8125rem;color:rgba(238,234,226,.75);opacity:0;transform:translateX(6px);transition:opacity .3s,transform .3s}
+.wa:hover .wa-tip,.wa:focus-visible .wa-tip{opacity:1;transform:none}
+
+/* ---------- Arrival headline ---------- */
+#arrive::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(90% 70% at 10% 95%,rgba(2,3,10,.85),rgba(2,3,10,0) 70%)}
+#arrive{z-index:10;display:flex;flex-direction:column;justify-content:flex-end;padding:0 clamp(20px,6vw,88px) calc(clamp(56px,11vh,120px) + var(--safe-b));pointer-events:none}
+#arrive.on{pointer-events:auto}
+.headline{font-family:var(--serif);font-weight:400;font-size:clamp(3.2rem,10.5vw,10rem);line-height:.9;letter-spacing:-.02em;max-width:12ch}
+.headline span{display:block;overflow:hidden;padding-bottom:.06em}
+.headline span i{display:block;font-style:normal;transform:translateY(105%);transition:transform 1.3s cubic-bezier(.19,1,.22,1)}
+.headline span:nth-child(2) i{font-style:italic;transition-delay:.12s}
+#arrive.on .headline span i{transform:none}
+.sub{margin-top:clamp(18px,3vh,28px);max-width:34ch;font-size:clamp(1rem,1.35vw,1.1875rem);line-height:1.5;color:rgba(238,234,226,.72);opacity:0;transition:opacity 1.2s ease .6s}
+.explore{margin-top:clamp(26px,5vh,44px);align-self:flex-start;display:flex;align-items:center;gap:14px;font-size:.9375rem;opacity:0;transition:opacity 1.2s ease .9s;padding:6px 0}
+.explore .drop{position:relative;width:1px;height:34px;background:rgba(238,234,226,.2);overflow:hidden}
+.explore .drop::after{content:"";position:absolute;left:0;top:-40%;width:1px;height:40%;background:var(--ink);animation:drop 2.2s cubic-bezier(.6,0,.4,1) infinite}
+@keyframes drop{to{top:110%}}
+#arrive.on .sub,#arrive.on .explore{opacity:1}
+#arrive.leave{opacity:0;transform:translateY(-3vh);transition:opacity .7s ease,transform .9s ease}
+
+/* ---------- Code-drawn art ---------- */
+.art{display:block;width:100%;height:100%;overflow:visible}
+.art .spin{animation:spin var(--t,60s) linear infinite;transform-box:view-box;transform-origin:0 0}
+.art .wobble{animation:wobble 9s ease-in-out infinite;transform-box:view-box;transform-origin:0 0}
+.art .pulse{animation:pulse 3s cubic-bezier(.2,.6,.3,1) infinite;transform-box:view-box;transform-origin:0 0;opacity:0}
+.art .drift{animation:drift 26s ease-in-out infinite alternate}
+@keyframes spin{to{transform:rotate(360deg)}}
+.nodes:not(.on) .art *,.panel:not(.open) .art *,#project:not(.open) .art *{animation-play-state:paused!important}
+@keyframes wobble{50%{transform:rotate(7deg) scale(1.02)}}
+@keyframes pulse{0%{transform:scale(.18);opacity:.9}100%{transform:scale(1);opacity:0}}
+@keyframes drift{to{transform:translateX(-14px)}}
+
+/* ---------- Universe nodes ---------- */
+.nodes{z-index:8;pointer-events:none;opacity:0}
+.nodes.on{opacity:1}
+.nodes.on .node{pointer-events:auto}
+.node{position:absolute;width:max-content;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;text-align:center}
+.node .obj{position:relative;display:block;width:var(--os,clamp(96px,10vw,150px));aspect-ratio:1;margin:-6% 0 -4%;transition:transform .6s cubic-bezier(.2,.8,.2,1),filter .6s;filter:brightness(.92)}
+/* hover / tap: the object lights up, grows, and a targeting ring locks on */
+.node .obj::after{content:"";position:absolute;inset:-6%;border-radius:50%;border:1px dashed rgba(255,255,255,.55);opacity:0;transform:scale(.7) rotate(0deg);transition:opacity .5s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.node:hover .obj,.node:focus-visible .obj,.node.lit .obj{transform:scale(1.14);filter:brightness(1.35) drop-shadow(0 0 22px rgba(255,255,255,.45))}
+.node:hover .obj::after,.node:focus-visible .obj::after,.node.lit .obj::after{opacity:1;transform:scale(1) rotate(90deg)}
+.node.big .obj{--os:clamp(128px,14vw,210px)}
+.node.planet .obj{--os:clamp(116px,13vw,190px)}
+.node b{font-family:var(--serif);font-weight:400;font-size:clamp(1.3rem,1.9vw,1.75rem);line-height:1}
+.node.big b{font-size:clamp(1.6rem,2.6vw,2.4rem)}
+.node em{font-style:normal;font-size:.8125rem;color:var(--dim);opacity:.75;transition:opacity .35s,color .35s;margin-top:-4px}
+.node b{text-shadow:0 2px 18px rgba(0,0,0,.9)}
+.node:hover em,.node:focus-visible em{opacity:1;color:var(--ink)}
+.node .tag{font-size:.6875rem;color:var(--ember);opacity:.8;letter-spacing:.02em}
+.hint{position:fixed;left:50%;bottom:calc(28px + var(--safe-b));transform:translateX(-50%);z-index:9;font-size:.8125rem;color:rgba(238,234,226,.55);opacity:0;transition:opacity 1s ease;pointer-events:none;white-space:nowrap}
+.hint.on{opacity:1}
+.worlds-head{position:fixed;left:clamp(20px,6vw,88px);bottom:calc(clamp(40px,8vh,90px) + var(--safe-b));z-index:9;max-width:30ch;opacity:0;pointer-events:none;transition:opacity .9s ease}
+.worlds-head.on{opacity:1;pointer-events:auto}
+.worlds-head h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.4rem,5vw,4.5rem);line-height:.95}
+.worlds-head p{margin-top:10px;color:rgba(238,234,226,.7);line-height:1.5;font-size:.9375rem}
+.textbtn{display:inline-flex;align-items:center;gap:10px;font-size:.875rem;color:rgba(238,234,226,.8);padding:8px 0;margin-top:14px;transition:color .3s}
+.textbtn:hover{color:var(--ink)}
+.textbtn svg{width:16px;height:16px}
+
+/* ---------- Panels ---------- */
+#panels{z-index:15;pointer-events:none}
+.panel{position:absolute;top:0;right:0;height:100%;width:min(640px,100%);overflow-y:auto;overscroll-behavior:contain;background:rgba(3,5,14,.78);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-left:1px solid var(--faint);--pt:calc(96px + var(--safe-t));--px:clamp(24px,5vw,64px);padding:var(--pt) var(--px) calc(64px + var(--safe-b));transform:translateX(40px);opacity:0;visibility:hidden;transition:transform .7s cubic-bezier(.19,1,.22,1),opacity .5s ease,visibility 0s linear .7s}
+.panel.open{transform:none;opacity:1;visibility:visible;pointer-events:auto;transition:transform .8s cubic-bezier(.19,1,.22,1),opacity .6s ease,visibility 0s}
+.panel .back{position:absolute;z-index:2;top:calc(28px + var(--safe-t));left:clamp(24px,5vw,64px);display:flex;align-items:center;gap:10px;font-size:.875rem;color:rgba(238,234,226,.85);padding:8px 0;text-shadow:0 1px 12px rgba(0,0,0,.9)}
+.panel-art{width:clamp(110px,26vw,160px);aspect-ratio:1;margin:-8px 0 14px -8px}
+.panel h2{position:relative}
+.panel .back:hover{color:var(--ink)}
+.panel .back svg{width:16px;height:16px}
+.panel h2{font-family:var(--serif);font-weight:400;font-size:clamp(3rem,6vw,4.75rem);line-height:.92;letter-spacing:-.01em}
+.panel .lead{font-family:var(--serif);font-size:clamp(1.4rem,2.2vw,1.75rem);line-height:1.22;margin-top:22px;color:var(--ink);max-width:26ch}
+.panel p{line-height:1.65;color:rgba(238,234,226,.74);margin-top:18px;max-width:52ch;font-size:1rem}
+.panel .cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin-top:34px;padding:14px 22px;border-radius:999px;background:var(--ink);color:var(--void);font-weight:500;font-size:.9375rem;text-decoration:none;transition:transform .3s,box-shadow .3s}
+.panel .cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(238,234,226,.25)}
+.panel .cta.ghost{background:none;color:var(--ink);border:1px solid rgba(238,234,226,.3)}
+.does{margin-top:38px;border-top:1px solid var(--faint)}
+.does div{display:grid;grid-template-columns:minmax(120px,.8fr) 1.4fr;gap:20px;padding:18px 0;border-bottom:1px solid var(--faint)}
+.does b{font-family:var(--serif);font-weight:400;font-size:1.3rem;line-height:1.2}
+.does span{color:rgba(238,234,226,.7);line-height:1.55;font-size:.9375rem}
+.steps{margin-top:38px;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:3.2rem 1fr 76px;gap:6px 14px;padding:22px 0;border-top:1px solid var(--faint);align-items:start}
+.steps li .step-art{grid-column:3;grid-row:1 / span 2;width:56px;height:56px;opacity:.85}
+.step-ico{width:100%;height:100%}
+.steps li::before{content:counter(s,decimal-leading-zero);grid-row:span 2;font-family:var(--serif);font-size:1.6rem;color:var(--dim);line-height:1}
+.steps b{font-family:var(--serif);font-weight:400;font-size:1.5rem;line-height:1.05}
+.steps span{color:rgba(238,234,226,.7);line-height:1.55;font-size:.9375rem}
+.links{margin-top:34px;display:flex;flex-wrap:wrap;gap:10px}
+.links a{padding:10px 16px;border:1px solid rgba(238,234,226,.24);border-radius:999px;font-size:.875rem;text-decoration:none;transition:background .3s}
+.links a:hover{background:rgba(238,234,226,.08)}
+.ph{color:#fff;text-decoration:underline dotted rgba(255,255,255,.55);text-underline-offset:4px}
+/* systems constellation */
+.system{margin-top:34px;position:relative}
+.system svg{width:100%;height:auto;display:block;overflow:visible}
+.system .sys-caption{font-size:.8125rem;color:var(--dim);margin-top:8px}
+/* contact */
+.form-step{margin-top:34px}
+.form-step[hidden]{display:none}
+.q{font-family:var(--serif);font-size:1.6rem;line-height:1.15}
+.choices{display:grid;gap:10px;margin-top:18px}
+.choice{text-align:left;padding:16px 18px;border:1px solid rgba(238,234,226,.2);border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:border-color .3s,background .3s}
+.choice:hover{border-color:rgba(238,234,226,.5);background:rgba(238,234,226,.04)}
+.choice[aria-pressed="true"]{border-color:var(--star);background:rgba(223,233,255,.08)}
+.choice span{color:var(--dim);font-size:.8125rem}
+.field{display:grid;gap:8px;margin-top:18px}
+.field label{font-size:.8125rem;color:rgba(238,234,226,.7)}
+.field input,.field textarea{width:100%;background:rgba(238,234,226,.04);border:1px solid rgba(238,234,226,.18);border-radius:12px;padding:13px 14px;font-size:1rem;transition:border-color .3s,background .3s}
+.field textarea{min-height:120px;resize:vertical;line-height:1.5}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--star);background:rgba(223,233,255,.05)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.err{color:#ffb4a8;font-size:.875rem;margin-top:14px;min-height:1.2em}
+.alt{margin-top:26px;font-size:.9375rem;color:rgba(238,234,226,.7)}
+.alt a{color:var(--ink)}
+.sent{margin-top:34px;padding:22px;border:1px solid rgba(160,230,190,.3);border-radius:16px;background:rgba(120,220,160,.05)}
+.sent b{font-family:var(--serif);font-weight:400;font-size:1.6rem;display:block}
+
+/* ---------- Project world ---------- */
+#project::before,#project::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none}
+#project::before{background:radial-gradient(120% 60% at 50% 115%,rgba(255,255,255,.07),transparent 60%)}
+#project::after{background:none}
+.proj-planet{width:clamp(84px,18vw,120px);aspect-ratio:1;margin:-6px 0 6px -6px}
+#project{isolation:isolate;z-index:16;background:#02030a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;visibility:hidden;overflow-y:auto;transition:opacity .6s ease,visibility 0s linear .6s}
+#project.open{opacity:1;visibility:visible;transition:opacity .7s ease,visibility 0s}
+.proj-bar{position:sticky;top:0;z-index:2;display:flex;gap:24px;align-items:center;padding:calc(78px + var(--safe-t)) clamp(20px,4vw,48px) 16px;background:linear-gradient(rgba(2,3,10,.95),rgba(2,3,10,0))}
+.proj-bar .textbtn{margin:0}
+.proj{display:grid;grid-template-columns:minmax(280px,.8fr) 1.5fr;gap:clamp(28px,5vw,72px);padding:10px clamp(20px,4vw,48px) calc(60px + var(--safe-b));align-items:start}
+.proj-info .kind{font-size:.8125rem;color:var(--dim)}
+.proj-info h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.8rem,5.5vw,5.2rem);line-height:.92;margin-top:10px}
+.proj-info dl{margin-top:30px;border-top:1px solid var(--faint)}
+.proj-info dt{font-size:.8125rem;color:var(--dim);padding-top:16px}
+.proj-info dd{font-size:1rem;line-height:1.55;color:rgba(238,234,226,.85);padding:6px 0 16px;border-bottom:1px solid var(--faint)}
+.proj-info .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.proj-info .acts a,.proj-info .acts button{padding:13px 20px;border-radius:999px;font-size:.9375rem;text-decoration:none;border:1px solid rgba(238,234,226,.3)}
+.proj-info .acts a{background:var(--ink);color:var(--void);border-color:var(--ink);font-weight:500}
+.browser{border-radius:14px;overflow:hidden;border:1px solid rgba(238,234,226,.16);box-shadow:0 40px 120px -30px var(--glow,rgba(160,190,255,.35));background:#0b0d16;position:sticky;top:140px}
+.browser-top{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid rgba(238,234,226,.1)}
+.browser-top i{display:flex;gap:6px}.browser-top i b{width:9px;height:9px;border-radius:50%;background:rgba(238,234,226,.18)}
+.browser-top span{flex:1;font-size:.75rem;color:var(--dim);background:rgba(238,234,226,.05);border-radius:6px;padding:5px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.viewport{aspect-ratio:16/10;overflow:hidden;position:relative}
+.viewport video{width:100%;height:100%;object-fit:cover;object-position:top}
+.viewport.scrolly{overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain}
+.viewport.scrolly::-webkit-scrollbar{display:none}
+.viewport.scrolly img{display:block;width:100%;height:auto}
+.fake{position:absolute;left:0;right:0;top:0;animation:scrollsite 22s ease-in-out infinite alternate}
+@keyframes scrollsite{0%,12%{transform:translateY(0)}88%,100%{transform:translateY(calc(-100% + var(--vh,400px)))}}
+.browser-note{font-size:.75rem;color:var(--dim);padding:10px 14px;border-top:1px solid rgba(238,234,226,.08)}
+
+/* ---------- Responsive ---------- */
+/* Phones: the universe becomes a vertical, scrollable solar system.
+   One orbit line runs through every destination, and each one is a full-width card, easy to tap. */
+body.m #rootNodes{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:calc(82px + var(--safe-t)) 16px calc(112px + var(--safe-b))}
+body.m #rootNodes.on{pointer-events:auto}
+body.m #rootNodes{-webkit-mask-image:linear-gradient(transparent 0,transparent calc(60px + var(--safe-t)),#000 calc(96px + var(--safe-t)));mask-image:linear-gradient(transparent 0,transparent calc(60px + var(--safe-t)),#000 calc(96px + var(--safe-t)))}
+.mstack{position:relative;display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
+.mstack::before{content:"";position:absolute;left:50px;top:36px;bottom:36px;border-left:1px dashed rgba(255,255,255,.3)}
+.mcap{font-size:.8125rem;color:rgba(238,234,226,.62);margin:0 0 6px 4px;letter-spacing:.01em}
+body.m .node.mrow{position:relative;left:auto!important;top:auto!important;transform:none;width:100%;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;padding:6px 14px 6px 6px;text-align:left;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12)}
+body.m .node.mrow .obj{--os:88px;margin:0;flex:none}
+body.m .node.mrow .txt{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+body.m .node.mrow b{font-size:1.45rem}
+body.m .node.mrow em{margin:0;font-size:.8125rem;opacity:.85}
+body.m .node.mrow .go{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#000;font-size:1.1rem;line-height:1}
+body.m .node.mrow.lit,body.m .node.mrow:active{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4)}
+body.m .hint{display:none}
+
+@media (max-width:760px){
+  /* phones: buttons you can't miss (solid white on black) */
+  .start{background:#fff;color:#000;border-color:#fff;font-weight:500;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .wa-orb{background:#fff;border-color:#fff;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+  .wa-orb svg{stroke:#0a0a0a}
+  .explore{background:#fff;color:#000;padding:14px 24px;border-radius:999px;font-weight:500}
+  .explore .drop{display:none}
+  .panel .back,.textbtn{padding:9px 16px;border:1px solid rgba(255,255,255,.4);border-radius:999px;background:rgba(0,0,0,.6);color:#fff}
+  .proj-bar{gap:10px}
+  .enter-label{background:rgba(0,0,0,.6);padding:7px 16px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.3)}
+  .skip{border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.5);color:#fff}
+  /* phones: blur behind panels is expensive on phone GPUs; a solid background looks the same here */
+  .panel{background:rgba(3,5,14,.97);backdrop-filter:none;-webkit-backdrop-filter:none}
+  #project{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .home img{display:none}
+  .start{padding:10px 15px;font-size:.8125rem}
+  .node{padding:8px 10px}
+  .node em{font-size:.75rem}
+  .row2{grid-template-columns:1fr}
+  .proj{grid-template-columns:1fr}
+  .browser{position:relative;top:0}
+  .panel{--pt:calc(128px + var(--safe-t));-webkit-mask-image:linear-gradient(transparent 0,transparent calc(62px + var(--safe-t)),#000 calc(108px + var(--safe-t)));mask-image:linear-gradient(transparent 0,transparent calc(62px + var(--safe-t)),#000 calc(108px + var(--safe-t)))}
+  #project{-webkit-mask-image:linear-gradient(transparent 0,transparent calc(58px + var(--safe-t)),#000 calc(96px + var(--safe-t)));mask-image:linear-gradient(transparent 0,transparent calc(58px + var(--safe-t)),#000 calc(96px + var(--safe-t)))}
+  .panel .back{top:calc(76px + var(--safe-t))}
+  .does div{grid-template-columns:1fr;gap:6px}
+  .wa-orb{width:48px;height:48px}
+  .enter-label{font-size:1.25rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.3s!important;transition-delay:0s!important}
+  .fake{animation:none}
+}
+</style>
+</head>
+<body>
+<!-- Polus wordmark, defined once and reused -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="polus-wm" viewBox="500 250 1755 530" fill="currentColor"><g transform="translate(500,290) scale(.5)"><g transform="translate(0.000000,980.000000) scale(0.100000,-0.100000)"><path d="M32406 9393 c-4 -4 -65 -11 -134 -15 -142 -8 -276 -22 -369 -37 -35
+-6 -89 -15 -120 -21 -94 -15 -239 -44 -300 -59 -24 -6 -60 -15 -80 -20 -21 -5
+-63 -16 -93 -25 -104 -32 -154 -50 -373 -132 -54 -20 -358 -174 -372 -188 -7
+-6 -31 -20 -54 -30 -22 -11 -41 -22 -41 -26 0 -4 -13 -13 -30 -20 -16 -7 -30
+-16 -30 -21 0 -4 -9 -10 -19 -14 -11 -3 -34 -19 -52 -36 -17 -16 -35 -29 -39
+-29 -5 0 -32 -22 -60 -50 -28 -27 -55 -50 -61 -50 -12 0 -199 -187 -199 -199
+0 -6 -22 -33 -50 -61 -27 -28 -50 -55 -50 -60 0 -4 -13 -22 -29 -39 -17 -18
+-33 -41 -36 -52 -4 -10 -10 -19 -14 -19 -5 0 -14 -13 -21 -30 -7 -16 -16 -30
+-20 -30 -3 0 -17 -22 -30 -50 -13 -27 -26 -50 -30 -50 -5 0 -75 -143 -115
+-235 -23 -53 -95 -269 -107 -320 -44 -189 -51 -265 -51 -625 0 -329 5 -398 33
+-510 6 -25 15 -65 20 -90 23 -116 69 -264 113 -360 14 -30 33 -74 43 -97 9
+-24 20 -43 24 -43 4 0 17 -23 30 -50 13 -27 26 -50 30 -50 4 0 15 -18 25 -41
+11 -23 32 -55 47 -71 15 -17 28 -34 28 -38 0 -4 14 -22 30 -40 17 -18 30 -36
+30 -41 0 -4 32 -40 70 -79 39 -39 70 -75 70 -80 0 -12 48 -60 60 -60 5 0 46
+-36 90 -80 44 -44 85 -80 89 -80 5 0 23 -13 41 -30 18 -16 36 -30 40 -30 4 0
+22 -13 39 -29 18 -17 41 -33 52 -36 10 -4 19 -10 19 -14 0 -5 14 -14 30 -21
+17 -7 30 -16 30 -20 0 -4 14 -13 30 -20 17 -7 30 -16 30 -20 0 -4 14 -13 30
+-20 17 -7 30 -16 30 -20 0 -4 14 -13 30 -20 17 -7 30 -16 30 -20 0 -4 19 -15
+41 -26 23 -10 47 -24 54 -30 6 -7 40 -27 76 -44 35 -18 66 -36 69 -40 3 -4 52
+-31 110 -60 58 -29 107 -56 110 -60 3 -4 160 -85 350 -180 190 -95 347 -176
+350 -180 3 -4 43 -27 90 -50 47 -23 87 -46 90 -50 3 -4 34 -22 69 -40 36 -17
+71 -38 78 -46 8 -8 18 -14 23 -14 4 0 22 -13 40 -30 18 -16 36 -30 40 -30 4 0
+22 -13 40 -30 18 -16 36 -30 41 -30 12 0 259 -248 259 -259 0 -5 6 -16 14 -24
+20 -20 80 -145 95 -197 7 -25 17 -59 22 -76 36 -118 -23 -367 -107 -451 -13
+-13 -24 -28 -24 -33 0 -15 -87 -98 -109 -105 -12 -3 -21 -10 -21 -14 0 -5 -13
+-14 -30 -21 -16 -7 -30 -16 -30 -19 0 -7 -32 -22 -168 -82 -23 -11 -50 -19
+-60 -19 -9 0 -37 -8 -62 -17 -166 -61 -576 -71 -955 -24 -136 17 -326 52 -445
+81 -25 6 -61 15 -80 19 -78 19 -438 135 -505 162 -189 79 -440 197 -460 216
+-21 21 -196 104 -205 98 -6 -4 -10 -351 -10 -926 l0 -919 93 -44 c50 -24 116
+-54 145 -65 28 -12 73 -30 100 -41 63 -26 369 -123 445 -141 20 -5 55 -13 77
+-19 22 -5 59 -15 83 -21 139 -34 412 -75 672 -100 145 -14 1070 -14 1200 0
+172 18 258 29 313 40 102 21 153 31 200 40 26 4 72 16 102 25 80 25 338 111
+388 130 61 23 403 195 419 211 7 8 22 17 33 20 11 3 20 10 20 14 0 5 14 14 30
+21 17 7 30 16 30 21 0 4 9 10 19 14 11 3 34 19 52 36 17 16 35 29 39 29 5 0
+36 27 70 60 34 33 65 60 70 60 12 0 140 128 140 140 0 5 27 36 60 70 33 34 60
+65 60 70 0 4 13 22 29 39 17 18 33 41 36 52 4 10 10 19 14 19 5 0 14 13 21 30
+7 16 16 30 20 30 3 0 17 23 30 50 13 28 26 50 30 50 5 0 53 97 95 195 29 69
+97 278 106 328 5 26 14 71 20 100 25 123 31 229 31 517 0 288 -6 392 -32 520
+-24 124 -29 147 -38 185 -15 65 -68 215 -97 280 -72 158 -120 255 -125 255 -4
+0 -17 23 -30 50 -13 28 -27 50 -30 50 -4 0 -13 14 -20 30 -7 17 -16 30 -20 30
+-4 0 -13 14 -20 30 -7 17 -16 30 -21 30 -4 0 -11 9 -14 20 -4 11 -29 43 -56
+71 -27 28 -49 54 -49 60 0 12 -267 279 -279 279 -6 0 -33 23 -61 50 -28 28
+-55 50 -60 50 -4 0 -22 13 -39 29 -18 17 -41 33 -52 36 -10 4 -19 10 -19 14 0
+5 -13 14 -30 21 -16 7 -30 16 -30 20 0 4 -13 13 -30 20 -16 7 -30 16 -30 20 0
+4 -13 13 -30 20 -16 7 -30 16 -30 20 0 3 -22 17 -50 30 -27 13 -50 26 -50 30
+0 4 -19 15 -41 26 -23 10 -47 24 -54 30 -6 7 -40 27 -76 44 -35 18 -66 36 -69
+40 -3 4 -61 36 -130 70 -69 34 -127 66 -130 70 -3 4 -160 85 -350 180 -190 95
+-347 176 -350 180 -3 4 -43 26 -89 50 -46 23 -90 48 -98 55 -7 8 -22 17 -33
+20 -11 3 -20 10 -20 14 0 5 -13 14 -30 21 -16 7 -30 16 -30 20 0 4 -13 13 -30
+20 -16 7 -30 16 -30 21 0 4 -9 10 -19 14 -11 3 -34 19 -52 36 -17 16 -35 29
+-40 29 -12 0 -199 188 -199 199 0 5 -6 16 -14 24 -35 35 -91 164 -108 252 -28
+140 16 350 88 423 8 7 14 18 14 23 0 11 148 159 159 159 5 0 16 6 23 14 8 7
+34 24 58 36 24 12 50 29 58 36 7 8 20 14 28 14 8 0 38 12 66 26 53 27 146 60
+213 76 22 5 58 13 80 19 243 62 558 69 900 20 154 -22 332 -55 433 -80 23 -6
+59 -15 80 -20 20 -5 75 -21 122 -35 47 -15 114 -36 150 -47 36 -11 86 -29 113
+-39 26 -11 71 -29 100 -41 28 -11 89 -39 135 -60 46 -22 87 -37 93 -34 5 4 9
+351 9 895 l0 889 -27 14 c-16 7 -46 18 -68 24 -22 6 -65 19 -95 28 -30 10 -72
+21 -92 26 -21 5 -55 13 -75 19 -21 5 -57 14 -80 20 -24 5 -62 15 -85 21 -130
+32 -334 63 -653 100 -198 22 -765 46 -779 32z"/><path d="M287 9233 c-10 -9 -9 -8891 0 -8896 11 -6 153 18 253 43 44 11 85 20
+185 39 28 5 70 15 95 21 25 6 66 15 93 21 26 5 68 13 95 18 26 6 67 15 92 21
+25 6 70 15 100 20 73 12 145 26 200 40 25 6 66 15 93 21 26 5 68 13 95 19 73
+15 142 28 202 40 104 20 145 29 190 40 50 13 116 26 188 38 26 5 57 14 69 20
+l23 13 0 1137 c0 698 4 1143 10 1152 8 13 73 16 437 22 235 3 473 11 528 17
+167 17 257 29 315 41 30 6 80 15 110 20 75 12 147 27 198 39 23 6 59 15 80 20
+66 15 370 114 479 155 64 24 444 215 460 232 8 8 18 14 23 14 5 0 15 6 22 14
+8 7 34 24 57 36 24 12 54 32 67 45 13 13 33 26 44 30 11 3 20 10 20 15 0 5 9
+11 20 15 11 3 38 24 61 46 22 21 45 39 49 39 5 0 36 27 70 60 34 33 65 60 70
+60 13 0 160 147 160 160 0 5 27 36 60 70 33 34 60 65 60 70 0 4 18 27 39 49
+22 23 43 50 46 61 4 11 10 20 14 20 5 0 14 14 21 30 7 17 16 30 20 30 4 0 13
+14 20 30 7 17 16 30 20 30 4 0 15 19 26 41 10 23 24 47 30 54 15 15 148 279
+170 337 38 100 127 366 136 403 5 22 13 61 19 88 5 26 14 71 20 100 12 59 25
+152 40 282 6 50 11 205 11 345 0 140 -5 296 -11 345 -15 130 -28 223 -40 283
+-6 28 -15 73 -20 100 -6 26 -14 65 -20 87 -6 22 -14 58 -19 80 -12 50 -64 207
+-87 260 -10 22 -30 69 -45 105 -55 129 -84 190 -90 190 -3 0 -21 32 -40 70
+-19 39 -37 70 -41 70 -3 0 -12 14 -19 30 -7 17 -16 30 -20 30 -4 0 -13 14 -20
+30 -7 17 -16 30 -21 30 -4 0 -10 9 -14 19 -3 11 -19 34 -36 52 -16 17 -29 35
+-29 39 0 4 -14 22 -30 40 -17 18 -30 36 -30 41 0 12 -367 379 -379 379 -5 0
+-28 18 -51 40 -23 22 -45 40 -50 40 -4 0 -22 14 -40 30 -18 17 -36 30 -40 30
+-4 0 -22 13 -39 29 -18 17 -41 33 -52 36 -10 4 -19 10 -19 14 0 4 -23 18 -50
+31 -27 13 -50 26 -50 30 0 4 -22 17 -50 30 -28 13 -50 26 -50 30 0 6 -190 98
+-305 148 -142 61 -173 72 -295 111 -235 75 -261 82 -365 102 -27 5 -72 14
+-100 20 -27 5 -76 14 -107 19 -32 6 -86 15 -120 21 -35 5 -108 15 -163 21
+-112 11 -3037 23 -3048 11z m2748 -1631 c175 -32 218 -42 331 -80 93 -31 326
+-142 351 -168 8 -8 18 -14 23 -14 4 0 22 -13 40 -30 18 -16 36 -30 41 -30 12
+0 239 -228 239 -240 0 -5 11 -20 24 -33 13 -13 34 -44 46 -68 13 -24 26 -46
+30 -49 10 -7 46 -79 66 -132 52 -140 68 -188 76 -233 5 -27 14 -77 20 -110 6
+-33 11 -143 11 -245 0 -102 -5 -212 -11 -245 -6 -33 -15 -82 -20 -110 -21
+-115 -142 -406 -187 -452 -8 -7 -17 -22 -20 -33 -3 -11 -10 -20 -15 -20 -5 0
+-12 -9 -15 -21 -9 -27 -247 -265 -274 -274 -12 -3 -21 -10 -21 -15 0 -5 -9
+-12 -20 -15 -11 -3 -26 -12 -33 -20 -41 -40 -315 -162 -422 -187 -22 -5 -58
+-13 -80 -19 -170 -43 -264 -51 -615 -53 l-335 -1 -3 1445 c-1 795 0 1451 3
+1458 6 16 677 11 770 -6z"/><path d="M16465 9228 c-3 -7 -4 -1608 -3 -3558 l3 -3545 2265 0 2265 0 0 835
+0 835 -1285 5 -1285 5 -5 2715 -5 2715 -973 3 c-773 2 -974 0 -977 -10z"/><path d="M21665 9228 c-11 -27 3 -4643 14 -4743 13 -125 27 -225 40 -290 15
+-72 30 -148 40 -202 4 -27 16 -73 25 -103 57 -183 99 -311 117 -355 78 -187
+151 -345 159 -345 3 0 21 -31 40 -70 19 -38 37 -70 41 -70 3 0 12 -13 19 -30
+7 -16 16 -30 20 -30 4 0 13 -13 20 -30 7 -16 16 -30 21 -30 4 0 10 -9 14 -19
+3 -11 19 -34 36 -52 16 -17 29 -35 29 -39 0 -5 18 -27 40 -50 22 -23 40 -46
+40 -51 0 -12 287 -299 299 -299 5 0 28 -18 51 -40 23 -22 45 -40 50 -40 4 0
+22 -13 39 -29 18 -17 41 -33 52 -36 10 -4 19 -10 19 -14 0 -5 14 -14 30 -21
+17 -7 30 -16 30 -20 0 -4 14 -13 30 -20 17 -7 30 -16 30 -19 0 -4 32 -22 70
+-41 39 -19 70 -37 70 -40 0 -6 108 -58 285 -138 117 -53 242 -98 390 -141 39
+-11 95 -27 125 -37 30 -9 75 -20 100 -25 50 -9 122 -23 203 -40 201 -40 368
+-51 797 -51 223 0 450 5 505 11 187 19 387 51 503 80 23 6 60 16 82 21 22 6
+57 14 78 19 48 11 325 104 377 126 39 17 148 65 273 121 34 15 62 30 62 34 0
+3 32 21 70 40 39 19 70 37 70 40 0 4 23 17 50 30 28 13 50 27 50 31 0 4 9 10
+19 14 11 3 34 19 52 36 17 16 35 29 39 29 4 0 22 14 40 30 18 17 36 30 40 30
+5 0 32 23 60 50 28 28 55 50 61 50 12 0 219 207 219 219 0 6 23 33 50 61 28
+28 50 55 50 60 0 5 18 27 39 49 22 23 43 50 46 61 4 11 10 20 14 20 5 0 14 14
+21 30 7 17 16 30 20 30 3 0 17 23 30 50 13 28 26 50 29 50 7 0 145 282 180
+365 18 44 61 174 117 355 9 30 20 75 25 100 5 25 13 70 19 100 24 124 46 272
+61 415 8 67 12 873 13 2455 l1 2355 -985 0 -985 0 3 -80 c1 -44 2 -309 2 -590
+-1 -280 -1 -762 0 -1070 5 -2669 3 -2843 -29 -3002 -6 -29 -15 -74 -20 -100
+-7 -43 -23 -93 -75 -231 -20 -53 -76 -165 -86 -172 -4 -3 -17 -25 -30 -49 -12
+-24 -33 -55 -46 -68 -13 -13 -24 -28 -24 -33 0 -15 -166 -177 -189 -185 -12
+-3 -21 -10 -21 -15 0 -5 -9 -12 -20 -15 -11 -3 -26 -12 -33 -20 -56 -55 -326
+-156 -502 -187 -135 -24 -569 -11 -690 21 -22 5 -58 14 -80 19 -120 28 -326
+112 -362 147 -7 8 -22 17 -33 20 -11 3 -20 10 -20 15 0 5 -9 11 -20 15 -11 3
+-38 24 -61 46 -22 21 -45 39 -49 39 -12 0 -80 68 -80 80 0 4 -18 27 -39 49
+-22 23 -43 50 -46 61 -4 11 -10 20 -14 20 -4 0 -18 23 -31 50 -13 27 -26 50
+-30 50 -4 0 -15 19 -24 43 -10 23 -25 58 -33 77 -61 142 -95 278 -125 495 -7
+54 -12 812 -17 2325 l-6 2245 -973 3 c-773 2 -974 0 -977 -10z"/></g></g><g transform="translate(792.60,238.60) scale(.23)"><g transform="translate(0.000000,2380.000000) scale(0.100000,-0.100000)"><path d="M11146 22954 c-9 -24 -14 -127 -26 -649 -6 -231 -15 -485 -21 -565
+-5 -80 -14 -269 -19 -420 -6 -151 -14 -340 -20 -420 -5 -80 -14 -273 -20 -430
+-9 -259 -22 -538 -50 -1120 -6 -113 -15 -304 -20 -425 -6 -121 -15 -296 -20
+-390 -6 -93 -17 -341 -25 -550 -8 -209 -19 -434 -25 -500 -5 -66 -14 -232 -20
+-370 -34 -833 -102 -1831 -144 -2105 -8 -52 -18 -120 -21 -150 -21 -201 -94
+-529 -141 -638 -8 -18 -14 -42 -14 -53 0 -11 -9 -37 -20 -59 -11 -22 -20 -45
+-20 -51 0 -7 -32 -76 -70 -153 -74 -148 -183 -309 -294 -431 -82 -91 -239
+-227 -341 -297 -81 -54 -358 -199 -418 -217 -17 -6 -70 -24 -117 -41 -47 -16
+-101 -34 -120 -39 -232 -63 -255 -69 -400 -96 -195 -37 -593 -85 -960 -115
+-69 -6 -174 -15 -235 -20 -60 -5 -186 -14 -280 -20 -93 -6 -260 -17 -370 -25
+-345 -24 -513 -34 -735 -45 -118 -6 -255 -15 -305 -20 -49 -5 -166 -11 -260
+-15 -93 -3 -258 -12 -365 -20 -107 -8 -303 -19 -435 -25 -132 -6 -280 -15
+-330 -20 -49 -5 -259 -14 -465 -20 -361 -11 -653 -30 -667 -43 -16 -17 24 -21
+260 -29 138 -4 333 -13 432 -20 99 -7 203 -11 232 -10 75 4 83 -28 17 -67 -35
+-21 -213 -175 -348 -302 -45 -41 -108 -97 -141 -125 -83 -67 -189 -159 -255
+-218 -93 -85 -607 -585 -720 -701 -180 -186 -345 -358 -377 -395 -17 -19 -89
+-100 -160 -180 -126 -142 -435 -522 -544 -670 -102 -138 -214 -295 -240 -335
+-73 -113 -131 -208 -159 -257 -8 -15 -57 -99 -107 -186 -51 -88 -93 -162 -93
+-165 0 -3 -26 -60 -59 -128 -149 -317 -213 -506 -272 -809 -30 -156 -34 -522
+-6 -612 9 -31 17 -65 17 -76 0 -33 48 -180 93 -282 100 -229 313 -473 552
+-635 106 -71 271 -162 345 -189 19 -8 75 -30 123 -50 48 -20 96 -36 106 -36 9
+0 22 -5 27 -10 10 -10 27 -16 224 -68 221 -59 465 -100 782 -132 185 -19 251
+-21 640 -17 500 5 845 31 1233 92 50 8 108 16 130 19 245 32 888 158 1155 226
+66 17 315 82 365 95 28 8 111 30 185 49 74 20 164 45 200 55 36 11 110 32 165
+47 55 15 168 49 250 75 83 27 188 61 235 75 263 81 848 282 1380 473 98 36
+351 134 415 161 38 16 200 82 260 105 149 57 529 215 536 222 5 5 11 36 13 70
+6 74 -8 94 -52 76 -95 -39 -414 -167 -502 -201 -58 -22 -195 -75 -305 -117
+-110 -43 -234 -88 -275 -102 -41 -13 -127 -44 -190 -68 -63 -23 -194 -68 -290
+-100 -96 -31 -197 -65 -225 -75 -106 -39 -296 -100 -420 -135 -71 -20 -175
+-50 -230 -67 -107 -32 -167 -49 -230 -66 -68 -19 -249 -64 -275 -69 -37 -8
+-254 -64 -261 -68 -11 -7 -526 -117 -649 -139 -41 -8 -95 -18 -120 -24 -60
+-15 -250 -48 -380 -68 -58 -8 -161 -24 -230 -35 -321 -50 -641 -84 -1030 -110
+-270 -18 -865 -7 -1115 20 -211 24 -450 61 -550 86 -407 103 -551 159 -808
+313 -222 132 -346 248 -471 437 -65 97 -67 102 -109 207 -54 134 -85 262 -103
+431 -13 133 -14 178 -5 275 13 129 24 204 46 302 61 271 62 273 115 413 11 29
+20 59 20 67 0 9 6 24 14 35 7 11 17 31 21 45 10 34 215 449 264 535 22 39 48
+83 57 99 8 15 48 78 88 140 40 61 90 139 112 174 21 35 72 107 112 160 40 53
+94 126 120 161 111 149 417 524 512 626 26 28 107 115 181 195 174 188 338
+357 469 484 58 55 161 155 230 222 230 223 314 301 386 360 158 131 353 301
+426 372 76 75 76 75 310 64 670 -33 853 -43 958 -52 63 -5 237 -15 385 -20
+149 -6 308 -15 355 -20 47 -5 186 -14 310 -20 124 -6 254 -15 290 -20 36 -5
+146 -14 245 -20 99 -6 214 -15 255 -20 41 -5 142 -14 223 -20 81 -6 153 -13
+160 -15 7 -2 93 -11 192 -20 99 -9 194 -20 210 -25 17 -5 75 -16 130 -25 213
+-35 263 -44 355 -69 141 -38 217 -61 295 -91 39 -14 88 -32 111 -40 134 -44
+340 -154 468 -250 229 -172 340 -287 497 -515 61 -88 195 -368 219 -455 4 -16
+23 -79 43 -140 45 -144 56 -184 72 -280 7 -44 17 -98 23 -120 6 -22 16 -92 22
+-155 6 -63 15 -133 20 -155 5 -22 14 -121 20 -220 6 -99 15 -200 20 -225 5
+-25 11 -119 15 -210 4 -91 13 -238 21 -327 7 -89 18 -305 24 -480 5 -175 15
+-370 20 -433 6 -63 15 -254 20 -425 5 -170 14 -389 20 -485 5 -96 14 -335 20
+-530 6 -195 15 -427 20 -515 5 -88 16 -351 25 -585 8 -234 17 -443 20 -465 2
+-22 9 -200 15 -395 6 -195 15 -425 20 -510 6 -85 17 -335 25 -555 8 -220 19
+-503 25 -630 5 -126 14 -354 20 -505 5 -151 14 -387 20 -525 5 -137 14 -385
+19 -550 10 -298 15 -353 33 -322 13 24 26 330 33 772 3 220 10 508 15 640 5
+132 14 364 20 515 5 151 19 491 30 755 11 264 24 593 30 730 5 138 14 351 20
+475 5 124 19 441 30 705 25 590 37 873 50 1120 5 105 14 339 20 520 6 182 15
+384 20 450 5 66 10 201 10 300 0 99 5 236 10 305 6 69 17 274 24 455 22 491
+71 1093 107 1290 36 198 61 319 75 367 8 26 14 54 14 63 0 32 130 405 175 499
+106 226 290 468 473 626 92 78 252 199 294 221 303 159 499 234 798 302 190
+44 254 56 322 62 36 3 79 10 95 15 15 5 82 14 147 20 65 6 138 15 160 20 23 5
+114 14 202 20 87 6 191 15 229 20 39 5 151 14 250 20 99 6 218 15 265 20 47 5
+189 14 315 20 127 6 266 15 310 20 44 5 188 14 320 20 132 5 319 14 415 20 96
+5 290 14 430 20 140 5 325 15 410 20 253 17 794 29 805 18 7 -7 -3 -21 -30
+-41 -22 -18 -69 -59 -105 -93 -36 -33 -111 -98 -168 -145 -56 -46 -144 -119
+-195 -162 -50 -42 -117 -96 -147 -119 -30 -23 -132 -103 -227 -177 -342 -271
+-460 -362 -583 -450 -69 -49 -188 -136 -264 -193 -76 -57 -180 -132 -231 -168
+-51 -36 -146 -104 -212 -151 -65 -47 -224 -157 -353 -244 -345 -233 -376 -253
+-670 -438 -186 -117 -168 -106 -288 -179 -57 -35 -140 -87 -185 -116 -45 -29
+-170 -105 -277 -169 -107 -64 -211 -126 -230 -138 -19 -13 -54 -33 -77 -46
+-174 -99 -279 -157 -413 -229 -236 -127 -247 -133 -364 -199 -61 -34 -124 -68
+-140 -75 -17 -7 -114 -58 -216 -113 -102 -54 -237 -123 -300 -152 -216 -100
+-349 -171 -360 -190 -11 -21 -14 -110 -4 -135 3 -9 14 -16 23 -16 34 0 1209
+606 1506 777 22 12 50 27 62 32 12 6 66 37 120 70 54 32 152 88 218 124 268
+144 314 170 460 262 28 18 163 99 300 181 138 81 275 165 305 185 30 20 107
+68 170 106 190 115 394 247 639 414 171 116 206 140 281 187 72 45 78 49 232
+160 59 42 155 111 213 152 59 41 130 92 158 113 29 21 63 45 77 55 14 9 77 55
+140 102 63 47 125 92 137 100 11 8 72 53 135 100 62 47 124 93 138 102 28 19
+210 162 327 256 43 34 139 110 213 169 74 58 137 109 140 112 3 4 46 40 95 81
+50 41 129 108 176 150 228 200 196 186 459 199 129 6 238 15 242 19 12 12
+-188 42 -281 42 -73 0 -81 2 -81 19 0 11 18 33 43 50 23 18 96 84 162 149 66
+64 183 176 260 247 170 158 523 511 701 700 72 77 149 158 170 180 45 47 252
+285 339 391 33 40 96 116 140 169 134 163 281 355 350 457 35 54 100 144 143
+200 42 57 100 140 127 186 28 46 62 102 77 125 28 44 35 57 85 147 16 30 60
+108 97 172 36 64 66 119 66 122 0 2 24 55 54 118 29 62 57 124 61 138 4 14 11
+30 16 36 5 6 16 31 23 55 8 24 27 76 41 114 28 75 48 142 70 245 8 36 21 90
+29 120 21 79 46 285 46 381 0 107 -25 312 -51 414 -105 413 -399 756 -861
+1005 -59 32 -120 63 -135 68 -107 41 -284 103 -378 131 -28 9 -232 58 -335 81
+-67 15 -297 49 -445 65 -71 8 -179 20 -240 27 -138 16 -849 14 -991 -2 -54 -6
+-160 -15 -234 -20 -307 -21 -689 -72 -1120 -150 -58 -10 -118 -21 -135 -24
+-97 -16 -356 -70 -560 -115 -110 -25 -813 -202 -910 -230 -84 -24 -235 -66
+-325 -91 -186 -51 -692 -213 -815 -261 -11 -4 -54 -17 -95 -30 -41 -12 -118
+-39 -170 -59 -52 -21 -158 -59 -235 -84 -77 -26 -180 -63 -230 -83 -104 -40
+-125 -48 -375 -142 -102 -38 -234 -90 -295 -116 -116 -50 -254 -104 -345 -137
+-30 -11 -59 -23 -65 -27 -5 -4 -44 -20 -85 -36 -41 -16 -105 -44 -143 -62 -37
+-18 -71 -33 -76 -33 -5 0 -20 -9 -35 -21 -23 -18 -26 -27 -26 -85 0 -93 -3
+-93 205 1 17 8 66 28 110 46 143 56 389 156 440 179 28 12 97 39 155 60 58 21
+157 60 220 85 129 53 679 255 693 255 5 0 23 6 40 14 18 8 75 28 127 44 52 17
+109 35 125 41 92 32 401 132 465 151 41 12 102 30 135 40 33 10 94 28 135 40
+41 12 102 30 135 40 33 11 85 26 115 33 30 8 93 26 140 40 95 28 336 93 420
+112 237 56 296 69 375 86 50 11 117 24 150 30 33 5 80 16 105 24 25 8 63 17
+85 20 22 4 81 15 130 25 166 34 445 78 604 96 68 7 147 18 175 23 28 6 119 15
+201 21 83 6 177 15 210 20 135 21 629 32 881 21 318 -15 606 -42 744 -70 128
+-27 290 -64 330 -76 25 -7 61 -17 80 -20 101 -19 385 -130 520 -202 88 -48
+251 -155 330 -219 199 -159 386 -427 455 -654 9 -30 23 -71 30 -90 7 -19 20
+-117 30 -216 15 -169 15 -194 0 -360 -9 -99 -23 -204 -32 -234 -54 -194 -99
+-338 -119 -388 -8 -18 -14 -37 -14 -43 0 -19 -73 -178 -217 -476 -38 -80 -142
+-267 -173 -312 -9 -15 -46 -71 -82 -126 -187 -288 -337 -504 -442 -635 -29
+-36 -78 -100 -110 -142 -118 -159 -294 -374 -421 -518 -22 -25 -63 -72 -90
+-105 -28 -32 -97 -109 -156 -170 -58 -60 -138 -146 -179 -190 -94 -102 -283
+-289 -436 -430 -65 -60 -161 -151 -214 -201 -145 -139 -152 -144 -178 -151
+-14 -3 -75 -3 -136 0 -61 3 -210 11 -331 17 -121 5 -314 15 -430 21 -115 5
+-347 16 -515 24 -168 8 -370 19 -450 25 -80 6 -275 17 -434 25 -159 9 -299 18
+-310 20 -12 2 -120 9 -241 15 -121 6 -263 15 -315 21 -52 5 -162 14 -245 19
+-161 10 -514 40 -740 64 -77 8 -171 18 -210 21 -38 4 -90 11 -115 16 -25 6
+-81 14 -125 19 -72 9 -118 17 -265 49 -124 26 -369 101 -500 152 -30 11 -72
+28 -94 35 -36 14 -70 31 -206 107 -158 88 -389 277 -503 412 -126 149 -299
+450 -346 600 -11 33 -33 98 -50 145 -63 173 -130 495 -151 733 -5 51 -16 146
+-24 212 -9 66 -16 152 -16 190 0 39 -7 140 -15 225 -8 85 -20 272 -25 415 -6
+143 -17 334 -25 425 -7 91 -16 264 -20 385 -3 121 -10 270 -15 330 -5 61 -14
+238 -20 395 -6 157 -17 377 -25 490 -7 113 -17 302 -20 420 -3 118 -10 276
+-16 351 -5 75 -13 255 -19 400 -6 145 -15 332 -20 414 -5 83 -14 301 -20 485
+-6 184 -15 393 -20 465 -6 71 -14 278 -20 460 -6 181 -17 445 -25 585 -8 140
+-17 431 -20 645 -9 544 -23 736 -49 669z"/><path d="M10055 16081 c-82 -43 -217 -113 -300 -156 -82 -42 -199 -106 -260
+-140 -60 -34 -182 -102 -270 -150 -319 -175 -462 -258 -950 -550 -371 -221
+-428 -255 -461 -273 -13 -7 -53 -32 -88 -55 -35 -23 -107 -69 -160 -102 -53
+-33 -158 -101 -234 -152 -75 -50 -177 -117 -227 -147 -179 -111 -251 -159
+-378 -249 -72 -51 -187 -130 -256 -177 -69 -47 -187 -128 -261 -181 -74 -52
+-166 -117 -205 -143 -38 -26 -86 -59 -106 -74 -21 -15 -120 -87 -220 -161
+-380 -278 -479 -355 -479 -371 0 -15 16 -16 158 -12 97 2 167 9 183 17 15 7
+123 86 240 177 231 177 536 402 678 499 161 111 208 144 226 159 11 10 126 89
+255 176 129 87 264 178 300 204 36 25 138 92 227 148 90 56 198 126 241 155
+44 28 110 71 148 94 38 24 157 99 264 168 107 68 242 152 300 187 58 34 193
+114 300 178 107 64 240 142 295 174 128 73 112 63 245 144 63 38 165 95 225
+127 61 32 175 94 255 138 171 94 305 166 415 222 80 41 80 41 86 105 6 67 -2
+100 -24 100 -7 0 -79 -36 -162 -79z"/></g></g></symbol></svg>
+
+<!-- Soft vignette over the code-drawn space -->
+<div id="bgs" class="layer" aria-hidden="true">
+  <div class="bg-dim"></div>
+</div>
+
+<!-- Deep space (always running underneath) -->
+<canvas id="space" class="layer" aria-hidden="true"></canvas>
+
+<!-- 1. Cinematic intro + gate -->
+<section id="hero" class="layer" aria-label="Polus intro">
+  <div class="hero-stage" id="heroStage">
+    <img id="heroFrame" src="assets/bw/hero.jpg" alt="">
+  </div>
+  <canvas id="gateCanvas" aria-hidden="true"></canvas>
+  <img class="statue" src="assets/bw/statue.png" alt="" aria-hidden="true">
+  <h1 class="gate-wm"><span class="flare" aria-hidden="true"></span><svg viewBox="0 0 1755 530" role="img" aria-label="Polus"><use href="#polus-wm"/></svg></h1>
+  <button class="enter" id="enterBtn" aria-label="Enter Polus">
+    <span class="enter-star" aria-hidden="true">
+      <svg viewBox="0 0 100 100"><g fill="#fff">
+        <path d="M50 8 C51.6 36 53.2 46 92 50 C53.2 54 51.6 64 50 92 C48.4 64 46.8 54 8 50 C46.8 46 48.4 36 50 8Z"/>
+      </g><g class="ring"><ellipse cx="50" cy="50" rx="36" ry="15" transform="rotate(-32 50 50)" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="54 7 150 7"/></g></svg>
+    </span>
+    <span class="enter-label">Enter Polus<small>Click the star</small></span>
+  </button>
+</section>
+
+<!-- 1a. The 3D Earth intro: plays by itself, then hands over to the gate -->
+<section id="intro" class="layer" aria-label="Intro">
+  <button class="skip" id="skipBtn">Skip intro</button>
+</section>
+
+<!-- 3. Arrival -->
+<section id="arrive" class="layer" aria-label="Welcome">
+  <h2 class="headline"><span><i>We make</i></span><span><i>things move.</i></span></h2>
+  <p class="sub">Websites and systems that turn attention into paying clients.</p>
+  <button class="explore" id="exploreBtn"><span class="drop" aria-hidden="true"></span>Explore Polus</button>
+</section>
+
+<!-- 4. Universe: destinations -->
+<nav class="nodes layer" id="rootNodes" aria-label="Polus destinations"></nav>
+<nav class="nodes layer" id="worldNodes" aria-label="Our work"></nav>
+<div class="worlds-head" id="worldsHead">
+  <h2>Worlds</h2>
+  <p>Each star is a business we built for. Choose one to travel there.</p>
+  <button class="textbtn" data-action="root"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to Polus</button>
+</div>
+<p class="hint" id="hint">Choose a star to travel there</p>
+
+<!-- Persistent chrome -->
+<button class="chrome home" id="homeBtn" aria-label="Back to the Polus universe">
+  <svg viewBox="0 0 100 100" aria-hidden="true"><path fill="#fff" d="M50 8 C51.6 36 53.2 46 92 50 C53.2 54 51.6 64 50 92 C48.4 64 46.8 54 8 50 C46.8 46 48.4 36 50 8Z"/><ellipse cx="50" cy="50" rx="36" ry="15" transform="rotate(-32 50 50)" fill="none" stroke="#fff" stroke-width="2.4" stroke-dasharray="54 7 150 7"/></svg>
+</button>
+<button class="chrome start" data-open="contact">Start a project</button>
+<a class="chrome wa" id="waLink" href="#" target="_blank" rel="noopener">
+  <span class="wa-tip">WhatsApp Polus</span>
+  <span class="wa-orb"><svg viewBox="0 0 24 24" fill="none" stroke="#f2f2f2" stroke-width="1.6" stroke-linejoin="round"><path d="M4 19.5 5.3 16A8 8 0 1 1 8.4 18.9z"/><path d="M9 10.2c.3 1.7 1.8 3.4 3.8 4" stroke-linecap="round"/></svg></span>
+  <span class="sr">Opens WhatsApp</span>
+</a>
+
+<!-- 5. Destination panels -->
+<div id="panels" class="layer">
+
+  <section class="panel" id="p-orbit" aria-labelledby="h-orbit">
+    <button class="back" data-action="close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to space</button>
+    <div class="panel-art" data-art="orbit"></div>
+    <h2 id="h-orbit">Orbit</h2>
+    <p class="lead">Polus builds the systems behind growing businesses.</p>
+    <p>Most businesses don't need another pretty website. They need what happens after someone finds them: a site that earns their trust, a reply that reaches them fast, and a follow-up that doesn't depend on someone remembering. That's what we build, from the first click to the closed sale.</p>
+    <div class="does">
+      <div><b>Websites that sell</b><span>Fast, memorable sites designed around the one action you need visitors to take.</span></div>
+      <div><b>Systems that follow up</b><span>Every enquiry captured, answered on WhatsApp and followed up until it becomes a sale.</span></div>
+      <div><b>Automations that save hours</b><span>Bookings, reminders, quotes and admin handled without anyone touching them.</span></div>
+    </div>
+    <button class="cta" data-open="contact">Start a project</button>
+  </section>
+
+  <section class="panel" id="p-systems" aria-labelledby="h-systems">
+    <button class="back" data-action="close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to space</button>
+    <div class="panel-art" data-art="systems"></div>
+    <h2 id="h-systems">Systems</h2>
+    <p class="lead">Every sale is a journey. We build every step of it.</p>
+    <div class="system" id="system"></div>
+    <p>A website on its own is one star. A system connects them: the moment someone finds you, they land somewhere that converts, their enquiry goes straight to WhatsApp, and follow-ups keep going until they buy. Nothing slips through the gaps.</p>
+    <button class="cta" data-open="contact">Map out my system</button>
+  </section>
+
+  <section class="panel" id="p-process" aria-labelledby="h-process">
+    <button class="back" data-action="close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to space</button>
+    <div class="panel-art" data-art="process"></div>
+    <h2 id="h-process">Process</h2>
+    <p class="lead">Four steps from a conversation to a system that runs itself.</p>
+    <ol class="steps">
+      <li><b>Discover</b><span class="step-art" data-step="discover"></span><span>A call to understand your business and find where clients are getting lost.</span></li>
+      <li><b>Design</b><span class="step-art" data-step="design"></span><span>We map the system and design the experience. You see it before anything gets built.</span></li>
+      <li><b>Build</b><span class="step-art" data-step="build"></span><span>Website, automations and integrations, tested with real scenarios before launch.</span></li>
+      <li><b>Launch and grow</b><span class="step-art" data-step="launch"></span><span>We go live, watch the numbers and improve whatever is underperforming.</span></li>
+    </ol>
+    <button class="cta" data-open="contact">Start with a call</button>
+  </section>
+
+  <section class="panel" id="p-polus" aria-labelledby="h-polus">
+    <button class="back" data-action="close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to space</button>
+    <div class="panel-art" data-art="polus"></div>
+    <h2 id="h-polus">Polus</h2>
+    <p class="lead">A studio in Cape Town, building for businesses that want to grow.</p>
+    <p><span class="ph">[Your story goes here: who you are, why you started Polus, and what you care about when you build for a client.]</span></p>
+    <p>Polus takes its name from the pole star, the fixed point sailors used to find their way. That's the job: give a business one clear direction and a system that keeps it moving.</p>
+    <div class="links" id="socials"></div>
+  </section>
+
+  <section class="panel" id="p-contact" aria-labelledby="h-contact">
+    <button class="back" data-action="close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to space</button>
+    <div class="panel-art" data-art="contact"></div>
+    <h2 id="h-contact">Start a project</h2>
+    <div class="form-step" id="step1">
+      <p class="q">What are we building?</p>
+      <div class="choices" id="choices"></div>
+    </div>
+    <div class="form-step" id="step2" hidden>
+      <p class="q">Tell us what's stuck.</p>
+      <div class="row2">
+        <div class="field"><label for="f-name">Your name</label><input id="f-name" autocomplete="name"></div>
+        <div class="field"><label for="f-biz">Business name</label><input id="f-biz" autocomplete="organization"></div>
+        <div class="field"><label for="f-wa">WhatsApp number</label><input id="f-wa" type="tel" autocomplete="tel" inputmode="tel"></div>
+        <div class="field"><label for="f-email">Email</label><input id="f-email" type="email" autocomplete="email"></div>
+      </div>
+      <div class="field"><label for="f-msg">What are you trying to improve?</label><textarea id="f-msg" placeholder="e.g. We get enquiries on Instagram but lose track of them"></textarea></div>
+      <p class="err" id="formErr" role="alert"></p>
+      <button class="cta" id="sendBtn">Send to Polus</button>
+      <button class="textbtn" id="changeType" style="margin-left:18px">Change project type</button>
+    </div>
+    <div class="sent" id="sent" hidden>
+      <b>Your message is ready in WhatsApp.</b>
+      <p>Press send there and it comes straight to us. We usually reply the same day.</p>
+    </div>
+    <p class="alt">Prefer to talk? <a id="bookLink" href="#" target="_blank" rel="noopener">Book a call</a></p>
+  </section>
+</div>
+
+<!-- 6. Project world -->
+<section id="project" class="layer" aria-label="Project" aria-hidden="true">
+  <div class="proj-bar">
+    <button class="textbtn" data-action="worlds"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3 5 8l5 5"/></svg>Back to Worlds</button>
+    <button class="textbtn" data-action="root">Return to Polus</button>
+  </div>
+  <div class="proj" id="projBody"></div>
+</section>
+
+<script>
+/* =========================================================
+   POLUS SETTINGS: edit these
+   ========================================================= */
+const POLUS = {
+  whatsapp: "27000000000",            // your number, country code first, no + or spaces
+  bookingUrl: "#",                    // e.g. your Calendly link
+  email: "hello@polus.co.za",
+  socials: [
+    { label: "Instagram", url: "#" },
+    { label: "LinkedIn",  url: "#" },
+  ],
+};
+
+/* Projects (placeholders). Add a "video" path to show a real screen recording. */
+const PROJECTS = [
+  { id:"greenpoint", name:"Green Point Tennis Club", kind:"Tennis club, Green Point, Cape Town", built:"Club website",
+    problem:"[Add in a line: what was holding the club back before the new site?]",
+    solution:"A new home for a 98-year-old club: court hire and visitor play, four ways to join, coaching and the club's history, so anyone in Cape Town can find a way onto the courts.",
+    result:"[Add a result, e.g. more court bookings or new members since launch]",
+    url:"https://greenpoint-tennis-club.vercel.app", domain:"greenpoint-tennis-club.vercel.app", color:"#7fb3c9",
+    look:"ocean", shot:"assets/img/work/site-1.jpg", video:null },
+  { id:"weddingbells", name:"Wedding Bells Suit Hire", kind:"Suit hire, Claremont, Cape Town", built:"Website and suit catalogue",
+    problem:"[Add in a line: what was holding the business back before the new site?]",
+    solution:"A browsable catalogue of 72 suits, tuxedos and boys' suits with prices, a clear fitting process, a customer gallery and reviews, built for matric dance and wedding season.",
+    result:"[Add a result, e.g. more fitting bookings or enquiries]",
+    url:"https://wedding-bells-suit-hire.wedding-bells-suit-hire.workers.dev", domain:"wedding-bells-suit-hire.workers.dev", color:"#a8a3d6",
+    look:"gas", shot:"assets/img/work/site-2.jpg", video:null },
+  { id:"fourandtwenty", name:"Four & Twenty Caf\u00e9", kind:"Caf\u00e9 and pantry, Wynberg, Cape Town", built:"Website with menu and bookings",
+    problem:"[Add in a line: what was holding the caf\u00e9 back before the new site?]",
+    solution:"The full menu with prices, live open-now hours for both caf\u00e9s, group bookings for up to 30 guests and their Google reviews up front.",
+    result:"[Add a result, e.g. more group bookings or website visits]",
+    url:"https://four-and-twenty.wedding-bells-suit-hire.workers.dev", domain:"four-and-twenty.workers.dev", color:"#c9a27a",
+    look:"rock", shot:"assets/img/work/site-3.jpg", video:null },
+];
+
+/* The gate image (2752x1536) and the spot just beyond the statue's pointing fingertip (0 to 1) */
+const IMG_W = 2752, IMG_H = 1536;
+const HAND = { u: 0.392, v: 0.412 };
+
+/* =========================================================
+   CODE-DRAWN ART
+   Every object is drawn in code (SVG) from the designs of the
+   generated images: sharp at any resolution, animated, tiny.
+   ========================================================= */
+const ART = (() => {
+  let uid = 0;
+  const id = p => `${p}${++uid}`;
+  // deterministic randomness so the galaxy looks the same every time
+  const rng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const glow = (gid, a = .55) => `<radialGradient id="${gid}"><stop offset="0" stop-color="#fff" stop-opacity="${a}"/><stop offset=".35" stop-color="#fff" stop-opacity="${a*.35}"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`;
+  const wrap = (inner, cls = "") => `<svg class="art ${cls}" viewBox="-100 -100 200 200" aria-hidden="true">${inner}</svg>`;
+
+  // Orbit: a dark planet with one thin bright ring
+  function orbit(){
+    const g = id("og"), h = id("oh");
+    return wrap(`<defs><radialGradient id="${g}" cx="32%" cy="28%" r="80%"><stop offset="0" stop-color="#e9e9e9"/><stop offset=".42" stop-color="#5d5d5d"/><stop offset="1" stop-color="#070707"/></radialGradient>${glow(h,.18)}</defs>
+      <circle r="95" fill="url(#${h})"/>
+      <g class="wobble"><ellipse rx="90" ry="22" transform="rotate(-18)" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="1.6"/></g>
+      <circle r="44" fill="url(#${g})"/>
+      <g class="wobble"><path d="M-90 0 A90 22 0 0 0 90 0" transform="rotate(-18)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>`, "a-orbit");
+  }
+  // Systems: three orbits, signals travelling between nodes
+  function systems(){
+    const h = id("sh"); let o = "";
+    [0, 60, 120].forEach((r, k) => {
+      const path = "M80,0 A80,26 0 1,1 -80,0 A80,26 0 1,1 80,0";
+      o += `<g transform="rotate(${r})"><path d="${path}" fill="none" stroke="#fff" stroke-opacity=".26" stroke-width="1.2"/>
+        <circle cx="80" r="3.2" fill="#fff" fill-opacity=".8"/><circle cx="-80" r="3.2" fill="#fff" fill-opacity=".8"/>
+        <circle r="3.4" fill="#fff"><animateMotion dur="${4 + k*1.3}s" repeatCount="indefinite" path="${path}"/></circle></g>`;
+    });
+    return wrap(`<defs>${glow(h,.6)}</defs><circle r="34" fill="url(#${h})"/>${o}<circle r="7" fill="#fff"/>`, "a-systems");
+  }
+  // Worlds: a spiral galaxy made of hundreds of stars, slowly turning
+  function worlds(){
+    const h = id("wh"), r = rng(7); let d = "";
+    for (let arm = 0; arm < 2; arm++) for (let i = 0; i < 150; i++){
+      const t = i / 150, a = t * 3.3 * Math.PI + arm * Math.PI + (r() - .5) * .5;
+      const rad = 8 + t * 86 + (r() - .5) * 10;
+      const x = Math.cos(a) * rad, y = Math.sin(a) * rad * .62;
+      d += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.5 + r() * 1.5 * (1 - t * .55)).toFixed(2)}" fill="#fff" fill-opacity="${(.22 + (1 - t) * .6 * r()).toFixed(2)}"/>`;
+    }
+    for (let i = 0; i < 70; i++){ const a = r() * 6.283, rad = r() * 30; d += `<circle cx="${(Math.cos(a)*rad).toFixed(1)}" cy="${(Math.sin(a)*rad*.62).toFixed(1)}" r="${(0.4+r()).toFixed(2)}" fill="#fff" fill-opacity=".7"/>`; }
+    return wrap(`<defs>${glow(h,.9)}</defs><circle r="44" fill="url(#${h})"/><g class="spin" style="--t:90s">${d}</g><circle r="6" fill="#fff"/>`, "a-worlds");
+  }
+  // Process: two stars locked in orbit
+  function process(){
+    const h1 = id("ph"), h2 = id("pk");
+    return wrap(`<defs>${glow(h1,.85)}${glow(h2,.6)}</defs>
+      <circle r="40" fill="none" stroke="#fff" stroke-opacity=".22" stroke-dasharray="2 5"/>
+      <g class="spin" style="--t:14s">
+        <path d="M40 0 A40 40 0 0 1 -12 38" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M-40 0 A40 40 0 0 1 12 -38" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="40" r="26" fill="url(#${h1})"/><circle cx="40" r="7.5" fill="#fff"/>
+        <circle cx="-40" r="20" fill="url(#${h2})"/><circle cx="-40" r="5" fill="#fff" fill-opacity=".85"/>
+      </g>`, "a-process");
+  }
+  // Polus: the pole star from the logo, with its orbit ring
+  function polus(){
+    const h = id("lh");
+    return wrap(`<defs>${glow(h,.75)}</defs><circle r="60" fill="url(#${h})"/>
+      <g class="spin" style="--t:30s"><ellipse rx="70" ry="28" transform="rotate(-32)" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="120 10 260 10"/></g>
+      <path transform="scale(1.3) translate(-50,-50)" fill="#fff" d="M50 8 C51.6 36 53.2 46 92 50 C53.2 54 51.6 64 50 92 C48.4 64 46.8 54 8 50 C46.8 46 48.4 36 50 8Z"/>`, "a-polus");
+  }
+  // Contact: a pulsar sending rings of light outward
+  function contact(){
+    const h = id("ch");
+    return wrap(`<defs>${glow(h,.8)}</defs><circle r="36" fill="url(#${h})"/>
+      <circle class="pulse" r="80" fill="none" stroke="#fff" stroke-width="1.4"/>
+      <circle class="pulse" r="80" fill="none" stroke="#fff" stroke-width="1.4" style="animation-delay:-1s"/>
+      <circle class="pulse" r="80" fill="none" stroke="#fff" stroke-width="1.4" style="animation-delay:-2s"/>
+      <circle r="8" fill="#fff"/>`, "a-contact");
+  }
+  // Project planets: gas giant, rocky world, ocean world
+  function planet(kind){
+    const c = id("pc"), sh = id("ps"), at = id("pa"), r = rng(kind.length * 97);
+    let surf = "";
+    if (kind === "gas"){
+      for (let i = -80; i < 80; i += 11){ const v = 90 + Math.round(r() * 80); surf += `<path d="M-80 ${i} Q-30 ${i + (r()-.5)*8} 0 ${i} T80 ${i} V${i+11} H-80Z" fill="rgb(${v},${v},${v})"/>`; }
+    } else if (kind === "rock"){
+      surf = `<rect x="-80" y="-80" width="160" height="160" fill="#8a8a8a"/>`;
+      for (let i = 0; i < 16; i++){ const x = (r()-.5)*120, y = (r()-.5)*120, s = 3 + r()*11; surf += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${s.toFixed(1)}" fill="#5c5c5c"/><circle cx="${(x-s*.2).toFixed(1)}" cy="${(y-s*.2).toFixed(1)}" r="${(s*.8).toFixed(1)}" fill="#6f6f6f"/>`; }
+    } else {
+      surf = `<rect x="-80" y="-80" width="160" height="160" fill="#6e6e6e"/>`;
+      for (let i = 0; i < 9; i++){ const y = -60 + i*15, x = (r()-.5)*60; surf += `<path d="M${(x-70).toFixed(1)} ${y} q35 ${(-8 - r()*8).toFixed(1)} 70 0 t70 0" fill="none" stroke="#e8e8e8" stroke-opacity="${(.35+r()*.4).toFixed(2)}" stroke-width="${(3+r()*5).toFixed(1)}" stroke-linecap="round"/>`; }
+    }
+    const moon = kind === "gas" ? `<circle cx="78" cy="-52" r="7" fill="#9a9a9a"/><circle cx="78" cy="-52" r="7" fill="url(#${sh})"/>` : "";
+    return wrap(`<defs><clipPath id="${c}"><circle r="62"/></clipPath>
+      <radialGradient id="${sh}" cx="30%" cy="28%" r="85%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".55" stop-color="#000" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".92"/></radialGradient>
+      ${glow(at,.22)}</defs>
+      <circle r="92" fill="url(#${at})"/>
+      <g clip-path="url(#${c})"><g class="drift">${surf}</g><circle r="62" fill="url(#${sh})"/></g>
+      <circle r="63" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2"/>${moon}`, "a-planet");
+  }
+  // Small line icons for the process steps
+  const icon = inner => `<svg class="step-ico" viewBox="-32 -32 64 64" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
+  const steps = {
+    discover: icon(`<circle r="14" stroke-opacity=".6"/><circle r="3" fill="#fff"/><path d="M0-26v5M0 21v5M-26 0h5M21 0h5" stroke-opacity=".5"/>`),
+    design:   icon(`<path d="M-20 14 L-8-6 L6 2 L18-16 M-8-6 L-14-20" stroke-opacity=".7"/><circle cx="-20" cy="14" r="2.4" fill="#fff"/><circle cx="-8" cy="-6" r="2.4" fill="#fff"/><circle cx="6" cy="2" r="2.4" fill="#fff"/><circle cx="18" cy="-16" r="2.4" fill="#fff"/><circle cx="-14" cy="-20" r="2.4" fill="#fff"/>`),
+    build:    icon(`<circle r="5" fill="#fff"/><path d="M0-24v10M0 14v10M-24 0h10M14 0h10M-17-17l7 7M10 10l7 7M17-17l-7 7M-10 10l-7 7" stroke-opacity=".6"/>`),
+    launch:   icon(`<circle cx="12" cy="-12" r="5" fill="#fff"/><path d="M8-8L-22 22M4-14L-18 8M14-4L-8 18" stroke-opacity=".5"/>`),
+  };
+  return { orbit, systems, worlds, process, polus, contact, planet, steps };
+})();
+
+/* =========================================================
+   Destinations
+   ========================================================= */
+const DESTS = [
+  { id:"orbit",   img:"obj-orbit",   name:"Orbit",   plain:"What Polus is",    d:[22,32], m:[28,24] },
+  { id:"systems", img:"obj-systems", name:"Systems", plain:"What we build",    d:[72,25], m:[72,34] },
+  { id:"worlds",  img:"obj-worlds",  name:"Worlds",  plain:"Our work",         d:[49,50], m:[44,49], big:true },
+  { id:"process", img:"obj-process", name:"Process", plain:"How we work",      d:[25,72], m:[26,64] },
+  { id:"polus",   img:"obj-polus",   name:"Polus",   plain:"Who we are",       d:[77,64], m:[72,73] },
+  { id:"contact", img:"obj-contact", name:"Contact", plain:"Start a project",  d:[56,84], m:[42,85] },
+];
+const WORLD_POS = { d:[[30,36],[68,30],[56,64]], m:[[36,22],[60,43],[38,64]] };
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+const isMobile = () => innerWidth < 760 || innerHeight > innerWidth * 1.15;
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const easeOut = t => 1-Math.pow(1-t,3);
+const easeIn = t => t*t*t;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+$("#waLink").href = `https://wa.me/${POLUS.whatsapp}?text=${encodeURIComponent("Hi Polus, I found you through your website.")}`;
+$("#bookLink").href = POLUS.bookingUrl;
+$("#socials").innerHTML = POLUS.socials.map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.label}</a>`).join("") +
+  `<a href="mailto:${POLUS.email}">${POLUS.email}</a>`;
+
+/* =========================================================
+   1. INTRO + GATE
+   ========================================================= */
+const hero = $("#hero"), stage = $("#heroStage"), introEl = $("#intro");
+const enterBtn = $("#enterBtn"), gateCanvas = $("#gateCanvas"), gctx = gateCanvas.getContext("2d");
+let state = "intro", gateAnchor = {x:0,y:0};
+
+/* On tall screens the image shifts slightly so his pointing hand stays in view */
+const heroX = () => innerWidth / innerHeight < 1 ? 0.45 : 0.5;
+function coverPoint(u,v){
+  const W = innerWidth, H = innerHeight, s = Math.max(W/IMG_W, H/IMG_H);
+  const w = IMG_W*s, h = IMG_H*s;
+  return { x:(W-w)*heroX() + u*w, y:(H-h)/2 + v*h };
+}
+/* The wordmark runs across the top, as big as possible; the statue stands in front of it,
+   so it only has to stay clear of his pointing hand */
+const WM_RATIO = 1755 / 530, WM_BOTTOM = 0.395;
+function placeWordmark(){
+  hero.style.setProperty("--hx", (heroX()*100) + "%");
+  const safeT = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-t")) || 0;
+  const top = Math.max(18, innerHeight * 0.035) + safeT;
+  const room = coverPoint(0.5, WM_BOTTOM).y - top;
+  const w = Math.max(240, Math.min(innerWidth * 0.86, 1640, room * WM_RATIO, innerWidth - 24));
+  hero.style.setProperty("--wm-w", w + "px");
+  hero.style.setProperty("--wm-left", (innerWidth / 2) + "px");
+  hero.style.setProperty("--wm-top", top + "px");
+}
+function placeEnter(){
+  placeWordmark();
+  let p = coverPoint(HAND.u, HAND.v);
+  if (p.x < 70 || p.x > innerWidth - 70) p = { x: innerWidth/2, y: innerHeight*0.8 };
+  gateAnchor = p;
+  enterBtn.style.left = p.x + "px";
+  enterBtn.style.top = (p.y + 30) + "px";
+  hero.style.setProperty("--ox", p.x + "px");
+  hero.style.setProperty("--oy", p.y + "px");
+  stage.style.setProperty("--ox", p.x + "px");
+  stage.style.setProperty("--oy", p.y + "px");
+}
+
+function showGate(){
+  if (state !== "intro") return;
+  state = "gate";
+  store.set("polus_seen","1");
+  hero.classList.add("frame","gate");
+  placeEnter();
+  startMotes();
+  if (matchMedia("(pointer: coarse)").matches) enterBtn.querySelector("small").textContent = "Tap the star";
+}
+
+
+/* The 3D intro (from the proto): loaded only for first-time visitors, then it hands over to the gate */
+let intro = null;
+function endIntro(){
+  if (state !== "intro") return;
+  try { intro && intro.stop(); } catch (e) {}
+  showGate();
+  introEl.classList.add("done");
+  setTimeout(() => { try { intro && intro.dispose(); } catch (e) {} introEl.remove(); }, 900);
+}
+/* Motes that drift near the hand and get pulled toward the star */
+let motes = [], pointer = {x:-9999,y:-9999}, pull = 0, moteRAF;
+function sizeCanvas(c, ctx){
+  const r = Math.min(devicePixelRatio||1, 2);
+  c.width = innerWidth*r; c.height = innerHeight*r;
+  c.style.width = innerWidth+"px"; c.style.height = innerHeight+"px";
+  ctx.setTransform(r,0,0,r,0,0);
+}
+function startMotes(){
+  sizeCanvas(gateCanvas, gctx);
+  motes = Array.from({length: innerWidth < 760 ? 90 : 170}, () => {
+    const a = Math.random()*Math.PI*2, r = 60 + Math.random()*260;
+    return { x: gateAnchor.x + Math.cos(a)*r, y: gateAnchor.y + Math.sin(a)*r*0.7,
+             vx:(Math.random()-.5)*.15, vy:(Math.random()-.5)*.15, s: Math.random()*1.3+.3, p: Math.random()*6 };
+  });
+  cancelAnimationFrame(moteRAF);
+  const tick = () => {
+    const dx = pointer.x - gateAnchor.x, dy = pointer.y - gateAnchor.y;
+    const target = Math.max(0, 1 - Math.hypot(dx,dy)/320);
+    pull += (target - pull) * 0.08;
+    document.documentElement.style.setProperty("--pull", pull.toFixed(3));
+    gctx.clearRect(0,0,innerWidth,innerHeight);
+    const t = performance.now()/1000;
+    for (const m of motes){
+      const ax = gateAnchor.x - m.x, ay = gateAnchor.y - m.y, dist = Math.hypot(ax,ay) || 1;
+      const f = pull * 0.035;
+      m.vx += ax/dist * f; m.vy += ay/dist * f;
+      m.vx *= .96; m.vy *= .96;
+      m.x += m.vx + Math.sin(t+m.p)*.08; m.y += m.vy + Math.cos(t*.8+m.p)*.08;
+      if (dist < 18){ const a=Math.random()*Math.PI*2, r=200+Math.random()*120; m.x=gateAnchor.x+Math.cos(a)*r; m.y=gateAnchor.y+Math.sin(a)*r*.7; m.vx=m.vy=0; }
+      const alpha = .35 + .45*Math.sin(t*1.7+m.p)**2 + pull*.2;
+      gctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      gctx.beginPath(); gctx.arc(m.x, m.y, m.s, 0, Math.PI*2); gctx.fill();
+    }
+    if (state === "gate") moteRAF = requestAnimationFrame(tick);
+  };
+  tick();
+}
+addEventListener("pointermove", e => { pointer.x = e.clientX; pointer.y = e.clientY; }, {passive:true});
+
+/* Click: dive into the light in his hand. The space scene starts underneath at the same moment,
+   stars streaking toward the camera, so the image hands straight over to it with no pause. */
+enterBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  if (state !== "gate") return;
+  state = "warping";
+  cancelAnimationFrame(moteRAF);
+  hero.classList.add("leaving");
+  if (!reduce) hero.classList.add("diving");
+  arrive();
+});
+
+/* =========================================================
+   2. SPACE RENDERER
+   ========================================================= */
+const space = $("#space"), sctx = space.getContext("2d");
+let stars = [], cam = { zoom: 1, fx: 0, fy: 0 }, mouse = {x:0,y:0,tx:0,ty:0}, spaceOn = false;
+let lines = null; // constellation lines in screen %
+
+function buildStars(){
+  sizeCanvas(space, sctx);
+  const n = Math.min(700, Math.round(innerWidth*innerHeight/2600));
+  stars = Array.from({length:n}, () => {
+    const d = Math.pow(Math.random(), 1.8)*.95 + .05;
+    return { x:(Math.random()*2-1), y:(Math.random()*2-1), d,
+             r: .35 + d*1.4 + (Math.random()<.02 ? 1.2 : 0),
+             tw: Math.random()*6.28, px:null, py:null,
+             vx: (Math.random()-.5) * 0.00016 * d, vy: (Math.random()-.5) * 0.00010 * d };
+  });
+  cam.fx = innerWidth/2; cam.fy = innerHeight/2;
+}
+function starPos(s, zoom){
+  const R = Math.max(innerWidth, innerHeight)*.62;
+  const bx = innerWidth/2 + s.x*R + mouse.x*s.d*22;
+  const by = innerHeight/2 + s.y*R + mouse.y*s.d*22;
+  const k = Math.pow(zoom, .35 + s.d*1.25);
+  return [cam.fx + (bx-cam.fx)*k, cam.fy + (by-cam.fy)*k, k];
+}
+function drawSpace(now){
+  if (!spaceOn) return;
+  if (state === "project" || (state === "panel" && document.body.classList.contains("m"))) { requestAnimationFrame(drawSpace); return; }
+  const W = innerWidth, H = innerHeight, t = now/1000;
+  mouse.x += (mouse.tx - mouse.x)*.04; mouse.y += (mouse.ty - mouse.y)*.04;
+  sctx.clearRect(0,0,W,H);
+  moveLayers();
+
+  const moving = Math.abs(cam.zoom - (cam.lastZoom ?? cam.zoom)) > .0015;
+  for (const s of stars){
+    const [x,y,k] = starPos(s, cam.zoom);
+    const tw = .55 + .45*Math.sin(t*(.6+s.d)+s.tw);
+    const a = Math.min(1, (.25 + s.d*.75) * tw);
+    s.x += s.vx; s.y += s.vy;
+    if (s.x > 1.05) s.x = -1.05; else if (s.x < -1.05) s.x = 1.05;
+    if (s.y > 1.05) s.y = -1.05; else if (s.y < -1.05) s.y = 1.05;
+    const col = `rgba(245,245,245,${a})`;
+    if (moving && s.px !== null && !reduce){
+      sctx.strokeStyle = col; sctx.lineWidth = Math.max(.4, s.r*Math.min(k,2.4)*.8);
+      sctx.beginPath(); sctx.moveTo(s.px, s.py); sctx.lineTo(x,y); sctx.stroke();
+    } else if (x>-10 && x<W+10 && y>-10 && y<H+10){
+      sctx.fillStyle = col;
+      const rr = Math.min(s.r*Math.min(k,3), 6);
+      if (rr < 1.5) sctx.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+      else { sctx.beginPath(); sctx.arc(x,y, rr, 0, 6.283); sctx.fill(); }
+    }
+    s.px = x; s.py = y;
+  }
+  // constellation lines between destinations
+  if (lines && lines.alpha > 0.01){
+    const k = Math.pow(cam.zoom, 1.4);
+    sctx.strokeStyle = `rgba(255,255,255,${.08*lines.alpha})`; sctx.lineWidth = 1;
+    sctx.beginPath();
+    lines.pts.forEach(([px,py],i) => {
+      const x = cam.fx + (px/100*W - cam.fx)*k, y = cam.fy + (py/100*H - cam.fy)*k;
+      i ? sctx.lineTo(x,y) : sctx.moveTo(x,y);
+    });
+    sctx.stroke();
+  }
+  cam.lastZoom = cam.zoom;
+  syncNodes();
+  requestAnimationFrame(drawSpace);
+}
+addEventListener("pointermove", e => {
+  mouse.tx = (e.clientX/innerWidth - .5)*2;
+  mouse.ty = (e.clientY/innerHeight - .5)*2;
+}, {passive:true});
+
+/* The galaxy band behind everything, drawn in code: thousands of fine particles,
+   rendered once per scene at the screen's full pixel density, then moved with the camera. */
+const bands = {}; let scene = null, prevScene = null, sceneT = 1;
+function makeBand(name){
+  const phone = innerWidth < 760 || innerHeight > innerWidth;
+  const dpr = Math.min(devicePixelRatio || 1, phone ? 1.5 : 2), W = innerWidth * 1.4, H = innerHeight * 1.4;
+  const c = document.createElement("canvas"); c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  const portrait = innerHeight > innerWidth;
+  let seed = { arrive: 11, universe: 23, worlds: 37 }[name] || 5;
+  const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const gauss = () => (r() + r() + r() + r() - 2) / 2;
+  const cx = W / 2, cy = H / 2;
+  if (name === "worlds"){
+    // Worlds: a soft galactic core the project planets orbit around
+    const glow = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * .42);
+    glow.addColorStop(0, "rgba(255,255,255,.10)"); glow.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = glow; g.fillRect(0, 0, W, H);
+    const n = Math.min(9000, W * H / 110);
+    for (let i = 0; i < n; i++){
+      const a = r() * 6.283, d = Math.abs(gauss()) * Math.min(W, H) * .5;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * .6;
+      g.fillStyle = `rgba(255,255,255,${(.05 + r() * .28 * (1 - d / (Math.min(W,H)*.6))).toFixed(3)})`;
+      g.fillRect(x, y, .6 + r() * .8, .6 + r() * .8);
+    }
+  } else {
+    // a tilted band of stars with a faint glow along its spine
+    const ang = (portrait ? -64 : -14) * Math.PI / 180, cs = Math.cos(ang), sn = Math.sin(ang);
+    const L = Math.hypot(W, H) * .55, T = Math.min(W, H) * (name === "arrive" ? .07 : .1);
+    g.save(); g.translate(cx, cy); g.rotate(ang);
+    const spine = g.createLinearGradient(0, -T * 2.2, 0, T * 2.2);
+    spine.addColorStop(0, "rgba(255,255,255,0)"); spine.addColorStop(.5, `rgba(255,255,255,${name === "arrive" ? .035 : .06})`); spine.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = spine; g.fillRect(-L, -T * 2.2, L * 2, T * 4.4); g.restore();
+    const n = Math.min(14000, W * H / (name === "arrive" ? 150 : 95)) * (phone ? .7 : 1);
+    for (let i = 0; i < n; i++){
+      const u = (r() * 2 - 1) * L, thick = T * (1 - .45 * Math.abs(u) / L);
+      const v = gauss() * thick;
+      const x = cx + u * cs - v * sn, y = cy + u * sn + v * cs;
+      const dens = Math.exp(-(v * v) / (2 * thick * thick * .35));
+      g.fillStyle = `rgba(255,255,255,${(.03 + r() * .3 * dens).toFixed(3)})`;
+      const sz = .5 + r() * (r() < .02 ? 1.8 : .8);
+      g.fillRect(x, y, sz, sz);
+    }
+  }
+  return c;
+}
+function setScene(name){
+  if (name === scene) return;
+  prevScene = scene; scene = name; sceneT = 0;
+  if (!bands[name]) bands[name] = makeBand(name);
+}
+function drawBand(name, alpha){
+  const c = bands[name]; if (!c || alpha <= 0) return;
+  const W = innerWidth * 1.4, H = innerHeight * 1.4;
+  const z = cam.zoom >= 1 ? Math.pow(cam.zoom, .28) : 1 - (1 - cam.zoom) * .05;
+  sctx.save(); sctx.globalAlpha = alpha;
+  sctx.translate(cam.fx - mouse.x * 8, cam.fy - mouse.y * 8); sctx.scale(z, z);
+  sctx.drawImage(c, -cam.fx - (W - innerWidth) / 2, -cam.fy - (H - innerHeight) / 2, W, H);
+  sctx.restore();
+}
+function moveLayers(){
+  sceneT = Math.min(1, sceneT + .025);
+  if (prevScene) drawBand(prevScene, 1 - sceneT);
+  drawBand(scene, sceneT);
+}
+
+function flyTo(target, fx, fy, dur, curve = ease){
+  return new Promise(res => {
+    const z0 = cam.zoom, s = performance.now();
+    if (fx !== undefined){ cam.fx = fx; cam.fy = fy; }
+    if (reduce){ cam.zoom = target; return res(); }
+    const step = now => {
+      const t = Math.min(1,(now-s)/dur);
+      cam.zoom = z0 + (target - z0)*curve(t);
+      if (t < 1) requestAnimationFrame(step); else res();
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+/* =========================================================
+   3. ARRIVAL + UNIVERSE
+   ========================================================= */
+const rootNodes = $("#rootNodes"), worldNodes = $("#worldNodes");
+let activeLayer = null;
+
+function renderNodes(){
+  const m = isMobile() ? "m" : "d";
+  document.body.classList.toggle("m", m === "m");
+  if (m === "m"){
+    rootNodes.innerHTML = `<div class="mstack"><p class="mcap">Tap a destination</p>${DESTS.map(n => `
+      <button class="node mrow" data-dest="${n.id}">
+        <span class="obj">${ART[n.id]()}</span>
+        <span class="txt"><b>${n.name}</b><em>${n.plain}</em></span><span class="go" aria-hidden="true">›</span>
+      </button>`).join("")}</div>`;
+  } else
+  rootNodes.innerHTML = DESTS.map(n => `
+    <button class="node${n.big?" big":""}" data-dest="${n.id}" style="left:${n[m][0]}%;top:${n[m][1]}%">
+      <span class="obj">${ART[n.id]()}</span><b>${n.name}</b><em>${n.plain}</em>
+    </button>`).join("");
+  worldNodes.innerHTML = PROJECTS.map((p,i) => `
+    <button class="node planet" data-project="${i}" style="left:${WORLD_POS[m][i][0]}%;top:${WORLD_POS[m][i][1]}%">
+      <span class="obj">${ART.planet(p.look)}</span>
+      <b>${p.name}</b><em>${p.built}</em>
+    </button>`).join("");
+  const order = ["orbit","systems","polus","contact","process","worlds","orbit"];
+  lines = m === "m" ? null : { pts: order.map(id => DESTS.find(d=>d.id===id)[m]), alpha: lines ? lines.alpha : 0 };
+}
+let lastSync = "";
+function syncNodes(){
+  const sig = cam.zoom.toFixed(4) + "|" + cam.fx + "|" + cam.fy + "|" + (activeLayer ? activeLayer.id : "") + (rootNodes.classList.contains("on") ? 1 : 0) + (worldNodes.classList.contains("on") ? 1 : 0);
+  if (sig === lastSync) return; lastSync = sig;
+  const k = Math.pow(cam.zoom, 1.4);
+  const tf = `translate(${cam.fx}px,${cam.fy}px) scale(${k}) translate(${-cam.fx}px,${-cam.fy}px)`;
+  const fade = cam.zoom > 1 ? Math.max(0, 1 - (cam.zoom-1)/1.6) : Math.max(0, 1 - (1-cam.zoom)*1.8);
+  for (const l of [rootNodes, worldNodes]){
+    l.style.transform = tf;
+    l.style.opacity = (l === activeLayer && l.classList.contains("on")) ? fade : 0;
+  }
+  if (lines && lines.pts) lines.alpha = activeLayer === rootNodes && rootNodes.classList.contains("on") ? fade : 0;
+}
+
+function arrive(){
+  if (state === "arrive") return;
+  state = "arrive";
+  document.body.classList.add("inside");
+  buildStars(); renderNodes();
+  spaceOn = true; space.classList.add("on"); setScene("arrive");
+  requestAnimationFrame(drawSpace);
+  cam.zoom = .22;
+  flyTo(1, gateAnchor.x || innerWidth/2, gateAnchor.y || innerHeight/2, 2800, easeOut);
+  if (!hero.classList.contains("diving")) { hero.style.transition = "opacity .8s ease"; hero.style.opacity = 0; }
+  setTimeout(()=>{ hero.style.display = "none"; }, 1300);
+  setTimeout(()=>$("#arrive").classList.add("on"), 1150);
+}
+
+function openUniverse(){
+  if (state !== "arrive") return;
+  state = "universe";
+  const a = $("#arrive"); a.classList.add("leave"); a.classList.remove("on");
+  setTimeout(()=> a.style.display = "none", 900);
+  activeLayer = rootNodes;
+  cam.zoom = .72;
+  setScene("universe");
+  rootNodes.classList.add("on");
+  flyTo(1, innerWidth/2, innerHeight/2, 1400, easeOut);
+  $("#hint").classList.add("on");
+  setTimeout(()=>$("#hint").classList.remove("on"), 5000);
+}
+$("#exploreBtn").addEventListener("click", openUniverse);
+addEventListener("wheel", e => { if (state==="arrive" && e.deltaY > 0) openUniverse(); }, {passive:true});
+let touchY = null;
+addEventListener("touchstart", e => touchY = e.touches[0].clientY, {passive:true});
+addEventListener("touchend", e => { if (state==="arrive" && touchY !== null && touchY - e.changedTouches[0].clientY > 40) openUniverse(); touchY = null; }, {passive:true});
+
+function nodeCenter(el){ const c = el.querySelector(".obj").getBoundingClientRect(); return [c.left+c.width/2, c.top+c.height/2]; }
+
+/* Destination click: travel to the star, then open */
+const lightUp = b => { b.classList.add("lit"); setTimeout(() => b.classList.remove("lit"), 1400); };
+rootNodes.addEventListener("click", async e => {
+  const b = e.target.closest("[data-dest]"); if (!b || state !== "universe") return;
+  lightUp(b);
+  const id = b.dataset.dest, [x,y] = nodeCenter(b);
+  $("#hint").classList.remove("on");
+  if (id === "worlds") return enterWorlds(x,y);
+  state = "travel";
+  await flyTo(5, x, y, 900, easeIn);
+  openPanel(id);
+});
+
+/* =========================================================
+   4. PANELS
+   ========================================================= */
+let openId = null, lastFocus = null;
+function openPanel(id){
+  openId = id; state = "panel";
+  document.body.classList.toggle("contact-open", id === "contact");
+  const p = $("#p-"+id); p.classList.add("open");
+  lastFocus = document.activeElement;
+  setTimeout(()=>p.querySelector(".back").focus({preventScroll:true}), 400);
+  if (id === "systems") drawSystem();
+  if (id === "contact") resetForm();
+}
+async function closePanel(){
+  if (!openId) return;
+  $("#p-"+openId).classList.remove("open");
+  openId = null; document.body.classList.remove("contact-open");
+  if (activeLayer === worldNodes){ state = "travel"; await flyTo(1, undefined, undefined, 1000, easeOut); $("#worldsHead").classList.add("on"); state = "worlds"; return; }
+  state = "travel";
+  await flyTo(1, undefined, undefined, 1100, easeOut);
+  state = "universe";
+}
+/* Contact can open from anywhere */
+document.addEventListener("click", async e => {
+  const o = e.target.closest("[data-open]"); if (!o) return;
+  const id = o.dataset.open;
+  if (["intro","gate","warping"].includes(state)) return;
+  if (state === "arrive") { $("#arrive").style.display="none"; state="universe"; activeLayer=rootNodes; setScene("universe"); rootNodes.classList.add("on"); }
+  if ($("#project").classList.contains("open")) closeProject(true);
+  if (openId){ $("#p-"+openId).classList.remove("open"); openId = null; }
+  if (cam.zoom < 2 && !reduce) { state="travel"; await flyTo(3.2, innerWidth*.5, innerHeight*.5, 700, easeIn); }
+  openPanel(id);
+});
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-action]"); if (!a) return;
+  const act = a.dataset.action;
+  if (act === "close") closePanel();
+  if (act === "root") backToRoot();
+  if (act === "worlds") closeProject();
+});
+addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if ($("#project").classList.contains("open")) closeProject();
+  else if (openId) closePanel();
+  else if (state === "worlds") backToRoot();
+});
+$("#homeBtn").addEventListener("click", () => {
+  if (state === "arrive") return openUniverse();
+  backToRoot();
+});
+
+/* Systems constellation with a travelling signal */
+function drawSystem(){
+  const box = $("#system");
+  if (box.dataset.done) return;
+  box.dataset.done = 1;
+  const steps = ["Customer","Finds you","Website","Enquiry","WhatsApp","Follow-up","Sale"];
+  const narrow = box.clientWidth < 480;
+  const pts = narrow ? [[60,24],[210,96],[80,168],[220,240],[70,312],[210,384],[140,456]]
+                     : [[30,40],[120,110],[210,50],[300,120],[390,55],[480,120],[560,60]];
+  const path = pts.map((p,i)=>(i?"L":"M")+p[0]+" "+p[1]).join(" ");
+  const below = (p,i) => narrow ? p[1] + 26 : p[1] + (p[1]>80?26:-14);
+  box.innerHTML = `<svg viewBox="${narrow ? "0 0 290 490" : "0 0 600 170"}" role="img" aria-label="${steps.join(", then ")}"${narrow ? ' style="max-width:320px"' : ""}>
+    <defs><radialGradient id="sg"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#dfe9ff" stop-opacity=".7"/><stop offset="1" stop-color="#dfe9ff" stop-opacity="0"/></radialGradient></defs>
+    <path id="sysPath" d="${path}" fill="none" stroke="rgba(223,233,255,.22)" stroke-width="1" stroke-dasharray="3 5"/>
+    ${pts.map((p,i)=>`<g><circle cx="${p[0]}" cy="${p[1]}" r="${i===6?5:3.2}" fill="${i===6?'#fff6e6':'#dfe9ff'}"/>
+      <text x="${p[0]}" y="${below(p,i)}" text-anchor="middle" fill="rgba(238,234,226,.8)" font-size="13" font-family="Geist, Arial, sans-serif">${steps[i]}</text></g>`).join("")}
+    <circle r="14" fill="url(#sg)"><animateMotion dur="5s" repeatCount="indefinite" rotate="0"><mpath href="#sysPath"/></animateMotion></circle>
+  </svg><p class="sys-caption">A typical system for a service business</p>`;
+}
+
+/* Contact form: two steps, sends through WhatsApp */
+const TYPES = [["A website","Digital experience"],["A system that brings in and follows up leads","Business system"],["An automation","Save time on admin"],["An online store","Ecommerce"],["Something else","Tell us about it"]];
+let chosen = null;
+$("#choices").innerHTML = TYPES.map((t,i)=>`<button class="choice" data-type="${i}" aria-pressed="false">${t[0]}<span>${t[1]}</span></button>`).join("");
+$("#choices").addEventListener("click", e => {
+  const c = e.target.closest(".choice"); if (!c) return;
+  chosen = TYPES[+c.dataset.type][0];
+  document.querySelectorAll(".choice").forEach(x=>x.setAttribute("aria-pressed", x===c));
+  setTimeout(()=>{ $("#step1").hidden = true; $("#step2").hidden = false; $("#f-name").focus(); }, 250);
+});
+$("#changeType").addEventListener("click", () => { $("#step2").hidden = true; $("#step1").hidden = false; });
+function resetForm(){ $("#sent").hidden = true; $("#formErr").textContent = ""; if (!chosen){ $("#step1").hidden=false; $("#step2").hidden=true; } }
+$("#sendBtn").addEventListener("click", () => {
+  const v = id => $(id).value.trim();
+  const name = v("#f-name"), biz = v("#f-biz"), wa = v("#f-wa"), email = v("#f-email"), msg = v("#f-msg");
+  const err = $("#formErr");
+  if (!name) return err.textContent = "Add your name so we know who we're talking to.";
+  if (!wa && !email) return err.textContent = "Add a WhatsApp number or an email so we can reply.";
+  if (!msg) return err.textContent = "Tell us what you'd like to improve, even in one line.";
+  err.textContent = "";
+  const text = `Hi Polus, I'd like to start a project.\n\nProject: ${chosen}\nName: ${name}${biz?`\nBusiness: ${biz}`:""}${wa?`\nWhatsApp: ${wa}`:""}${email?`\nEmail: ${email}`:""}\n\nWhat I want to improve:\n${msg}`;
+  window.open(`https://wa.me/${POLUS.whatsapp}?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  $("#step2").hidden = true; $("#sent").hidden = false;
+});
+
+/* =========================================================
+   5. WORLDS (portfolio)
+   ========================================================= */
+async function enterWorlds(x,y){
+  state = "travel";
+  await flyTo(5, x, y, 900, easeIn);
+  rootNodes.classList.remove("on");
+  activeLayer = worldNodes;
+  setScene("worlds");
+  worldNodes.classList.add("on");
+  cam.zoom = .35;
+  await flyTo(1, innerWidth/2, innerHeight/2, 1500, easeOut);
+  $("#worldsHead").classList.add("on");
+  state = "worlds";
+}
+async function backToRoot(){
+  if ($("#project").classList.contains("open")) closeProject(true);
+  if (openId){ $("#p-"+openId).classList.remove("open"); openId = null; }
+  if (activeLayer === rootNodes && state !== "travel"){ state="travel"; await flyTo(1, undefined, undefined, 900, easeOut); state="universe"; return; }
+  state = "travel";
+  $("#worldsHead").classList.remove("on");
+  worldNodes.classList.remove("on");
+  activeLayer = rootNodes;
+  setScene("universe");
+  rootNodes.classList.add("on");
+  cam.zoom = 2.4;
+  await flyTo(1, innerWidth/2, innerHeight/2, 1300, easeOut);
+  state = "universe";
+}
+worldNodes.addEventListener("click", async e => {
+  const b = e.target.closest("[data-project]"); if (!b || state !== "worlds") return;
+  lightUp(b);
+  const [x,y] = nodeCenter(b);
+  state = "travel";
+  $("#worldsHead").classList.remove("on");
+  await flyTo(6, x, y, 1000, easeIn);
+  openProject(PROJECTS[+b.dataset.project]);
+});
+
+function fakeSite(p){
+  const c = p.color;
+  return `<div class="fake" style="background:#f6f3ee;color:#16140f;font-family:Geist,Arial,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:3.2% 5%;font-size:clamp(9px,1.1vw,13px)">
+      <b style="font-family:'Instrument Serif',Georgia,serif;font-size:1.6em;font-weight:400">${p.name}</b>
+      <span style="display:flex;gap:1.6em;opacity:.6"><span>About</span><span>Services</span><span>Contact</span></span>
+    </div>
+    <div style="padding:6% 5% 4%;display:grid;grid-template-columns:1.1fr 1fr;gap:5%;align-items:center">
+      <div><div style="font-family:'Instrument Serif',Georgia,serif;font-size:clamp(22px,4.4vw,58px);line-height:.95">${p.tagline}</div>
+        <div style="margin-top:6%;display:flex;gap:3%"><span style="background:${c};color:#fff;border-radius:99px;padding:.8em 1.4em;font-size:clamp(8px,1vw,12px)">Get started</span><span style="border:1px solid #0003;border-radius:99px;padding:.8em 1.4em;font-size:clamp(8px,1vw,12px)">Learn more</span></div></div>
+      <div style="aspect-ratio:4/5;border-radius:12px;background:linear-gradient(160deg,${c},${c}55 60%,#16140f22)"></div>
+    </div>
+    <div style="padding:2% 5% 6%;display:grid;grid-template-columns:repeat(3,1fr);gap:3%">
+      ${[1,2,3].map(()=>`<div><div style="aspect-ratio:1;border-radius:10px;background:${c}33"></div><div style="height:8px;width:70%;background:#0002;border-radius:4px;margin-top:10px"></div><div style="height:8px;width:45%;background:#0001;border-radius:4px;margin-top:6px"></div></div>`).join("")}
+    </div>
+    <div style="margin:0 5% 6%;padding:6% 5%;border-radius:14px;background:#16140f;color:#f6f3ee;font-family:'Instrument Serif',Georgia,serif;font-size:clamp(18px,3vw,40px)">Ready when you are.</div>
+  </div>`;
+}
+function openProject(p){
+  state = "project";
+  $("#projBody").innerHTML = `
+    <div class="proj-info">
+      <div class="proj-planet">${ART.planet(p.look)}</div>
+      <p class="kind">${p.kind}</p>
+      <h2>${p.name}</h2>
+      <dl>
+        <dt>What we built</dt><dd>${p.built}</dd>
+        <dt>The problem</dt><dd>${ph(p.problem)}</dd>
+        <dt>The system</dt><dd>${p.solution}</dd>
+        <dt>The result</dt><dd>${ph(p.result)}</dd>
+      </dl>
+      <div class="acts"><a href="${p.url}" target="_blank" rel="noopener">Visit live site</a><button data-open="contact">Build something similar</button></div>
+    </div>
+    <div class="browser" style="--glow:${p.color}55">
+      <div class="browser-top"><i><b></b><b></b><b></b></i><span>${p.domain}</span></div>
+      <div class="viewport${p.shot ? " scrolly" : ""}">${p.video ? `<video src="${p.video}" autoplay muted loop playsinline></video>` : p.shot ? `<img src="${p.shot}" alt="The ${p.name} website">` : fakeSite(p)}</div>
+      <p class="browser-note">${p.shot ? "Scroll inside to explore, or visit the live site." : p.video ? "" : "Placeholder preview. Add a screen recording of the live site to replace it."}</p>
+    </div>`;
+  const pr = $("#project"); pr.classList.add("open"); pr.setAttribute("aria-hidden","false"); pr.scrollTop = 0;
+  const vp = pr.querySelector(".viewport"); if (vp) vp.style.setProperty("--vh", vp.clientHeight+"px");
+  if (vp && vp.classList.contains("scrolly")) autoScroll(vp);
+  setTimeout(()=>pr.querySelector(".proj-bar .textbtn").focus({preventScroll:true}), 500);
+}
+/* Placeholder text in brackets is highlighted until you replace it */
+const ph = t => t.startsWith("[") ? `<span class="ph">${t}</span>` : t;
+
+/* Slow self-scrolling preview; pauses whenever the visitor scrolls it themselves */
+let scrollRAF;
+function autoScroll(vp){
+  cancelAnimationFrame(scrollRAF);
+  if (reduce) return;
+  let pauseUntil = performance.now() + 1800, pos = 0;
+  const hold = () => { pauseUntil = performance.now() + 4000; pos = vp.scrollTop; };
+  vp.addEventListener("wheel", hold, {passive:true});
+  vp.addEventListener("touchstart", hold, {passive:true});
+  vp.addEventListener("pointerdown", hold);
+  const step = now => {
+    if (!vp.isConnected) return;
+    if (now > pauseUntil){
+      pos += 0.55;
+      if (pos >= vp.scrollHeight - vp.clientHeight - 1){ pos = 0; pauseUntil = now + 2500; vp.scrollTo({top:0, behavior:"smooth"}); }
+      else vp.scrollTop = pos;
+    }
+    scrollRAF = requestAnimationFrame(step);
+  };
+  scrollRAF = requestAnimationFrame(step);
+}
+
+async function closeProject(silent){
+  const pr = $("#project"); if (!pr.classList.contains("open")) return;
+  pr.classList.remove("open"); pr.setAttribute("aria-hidden","true");
+  if (silent) return;
+  state = "travel";
+  await flyTo(1, undefined, undefined, 1100, easeOut);
+  $("#worldsHead").classList.add("on");
+  state = "worlds";
+}
+
+/* =========================================================
+   Resize
+   ========================================================= */
+let rt;
+addEventListener("resize", () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    if (state === "gate"){ placeEnter(); sizeCanvas(gateCanvas, gctx); }
+    if (spaceOn){ for (const k in bands) delete bands[k]; const sc = scene; scene = null; setScene(sc); sceneT = 1; buildStars(); renderNodes(); if (activeLayer) activeLayer.classList.add("on"); }
+  }, 150);
+});
+
+/* =========================================================
+   Startup. Runs last, so everything above exists before the gate
+   can appear (the gate used to crash for returning visitors).
+   ========================================================= */
+document.querySelectorAll(".panel-art").forEach(el => el.innerHTML = ART[el.dataset.art]());
+document.querySelectorAll(".step-art").forEach(el => el.innerHTML = ART.steps[el.dataset.step]);
+function boot(){
+  if (reduce) { introEl.remove(); showGate(); return; }
+  import("./assets/intro/intro.js")
+    .then(m => { intro = m; if (state === "intro") m.start(endIntro); })
+    .catch(endIntro);
+  setTimeout(endIntro, 14000);           // very slow connection: don't keep anyone waiting
+  $("#skipBtn").addEventListener("click", e => { e.stopPropagation(); endIntro(); });
+  introEl.addEventListener("click", endIntro);
+  addEventListener("keydown", e => { if (state==="intro" && (e.key===" "||e.key==="Enter"||e.key==="Escape")) { e.preventDefault(); endIntro(); } });
+  addEventListener("wheel", () => { if (state==="intro") endIntro(); }, {passive:true});
+}
+boot();
+</script>
+</body>
+</html>

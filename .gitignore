@@ -1,0 +1,14 @@
+.DS_Store
+*.sb-*
+# legacy / source assets: kept on disk, not part of the live site
+assets/hero.mp4
+assets/transition.mp4
+assets/final-frame.jpg
+assets/frame_before_transition*.jpg
+assets/polus-logo.png
+assets/img/*
+!assets/img/work/
+assets/bw/*
+!assets/bw/hero.jpg
+!assets/bw/statue.png
+!assets/bw/og.jpg
