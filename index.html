@@ -138,6 +138,11 @@ body.contact-open .start{opacity:0;pointer-events:none}
 @keyframes pulse{0%{transform:scale(.18);opacity:.9}100%{transform:scale(1);opacity:0}}
 @keyframes drift{to{transform:translateX(-14px)}}
 
+/* ---------- 3D objects (assets/objects3d.js) ---------- */
+#obj3d{position:fixed;inset:0;width:100%;height:100%;z-index:7;pointer-events:none;opacity:0;transition:opacity .35s ease}
+body.o3d .node .obj .art{visibility:hidden}
+body.o3d .node .obj{filter:none!important}
+
 /* ---------- Universe nodes ---------- */
 .nodes{z-index:8;pointer-events:none;opacity:0}
 .nodes.on{opacity:1}
@@ -253,21 +258,20 @@ body.contact-open .start{opacity:0;pointer-events:none}
 .browser-note{font-size:.75rem;color:var(--dim);padding:10px 14px;border-top:1px solid rgba(238,234,226,.08)}
 
 /* ---------- Responsive ---------- */
-/* Phones: the universe becomes a vertical, scrollable solar system.
-   One orbit line runs through every destination, and each one is a full-width card, easy to tap. */
-body.m #rootNodes{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:calc(82px + var(--safe-t)) 16px calc(112px + var(--safe-b))}
+/* Phones: the universe becomes a tall constellation you scroll through:
+   the objects cluster down the page, staggered left and right, joined by one orbit line. */
+body.m #rootNodes{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:calc(76px + var(--safe-t)) 0 calc(110px + var(--safe-b))}
 body.m #rootNodes.on{pointer-events:auto}
 body.m #rootNodes{-webkit-mask-image:linear-gradient(transparent 0,transparent calc(60px + var(--safe-t)),#000 calc(96px + var(--safe-t)));mask-image:linear-gradient(transparent 0,transparent calc(60px + var(--safe-t)),#000 calc(96px + var(--safe-t)))}
-.mstack{position:relative;display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
-.mstack::before{content:"";position:absolute;left:50px;top:36px;bottom:36px;border-left:1px dashed rgba(255,255,255,.3)}
-.mcap{font-size:.8125rem;color:rgba(238,234,226,.62);margin:0 0 6px 4px;letter-spacing:.01em}
-body.m .node.mrow{position:relative;left:auto!important;top:auto!important;transform:none;width:100%;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;padding:6px 14px 6px 6px;text-align:left;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12)}
-body.m .node.mrow .obj{--os:88px;margin:0;flex:none}
-body.m .node.mrow .txt{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
-body.m .node.mrow b{font-size:1.45rem}
-body.m .node.mrow em{margin:0;font-size:.8125rem;opacity:.85}
-body.m .node.mrow .go{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#000;font-size:1.1rem;line-height:1}
-body.m .node.mrow.lit,body.m .node.mrow:active{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4)}
+.mfield{position:relative;height:max(1100px,150vh);margin:0 12px}
+.mcap{position:absolute;top:0;left:0;right:0;text-align:center;font-size:.8125rem;color:rgba(238,234,226,.6);letter-spacing:.01em}
+.mlines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mlines polyline{fill:none;stroke:rgba(255,255,255,.2);stroke-width:1;stroke-dasharray:3 6;vector-effect:non-scaling-stroke}
+body.m .node.mnode{position:absolute;transform:translate(-50%,-50%)}
+body.m .node.mnode .obj{--os:120px}
+body.m .node.mnode.big .obj{--os:150px}
+body.m .node.mnode b{font-size:1.5rem}
+body.m .node.mnode em{opacity:.9}
 body.m .hint{display:none}
 
 @media (max-width:760px){
@@ -858,12 +862,12 @@ const ART = (() => {
    Destinations
    ========================================================= */
 const DESTS = [
-  { id:"orbit",   img:"obj-orbit",   name:"Orbit",   plain:"What Polus is",    d:[22,32], m:[28,24] },
-  { id:"systems", img:"obj-systems", name:"Systems", plain:"What we build",    d:[72,25], m:[72,34] },
-  { id:"worlds",  img:"obj-worlds",  name:"Worlds",  plain:"Our work",         d:[49,50], m:[44,49], big:true },
-  { id:"process", img:"obj-process", name:"Process", plain:"How we work",      d:[25,72], m:[26,64] },
-  { id:"polus",   img:"obj-polus",   name:"Polus",   plain:"Who we are",       d:[77,64], m:[72,73] },
-  { id:"contact", img:"obj-contact", name:"Contact", plain:"Start a project",  d:[56,84], m:[42,85] },
+  { id:"orbit",   img:"obj-orbit",   name:"Orbit",   plain:"What Polus is",    d:[22,32], m:[28,24] , p:[36,8] },
+  { id:"systems", img:"obj-systems", name:"Systems", plain:"What we build",    d:[72,25], m:[72,34] , p:[70,22] },
+  { id:"worlds",  img:"obj-worlds",  name:"Worlds",  plain:"Our work",         d:[49,50], m:[44,49], big:true , p:[42,39] },
+  { id:"process", img:"obj-process", name:"Process", plain:"How we work",      d:[25,72], m:[26,64] , p:[25,57] },
+  { id:"polus",   img:"obj-polus",   name:"Polus",   plain:"Who we are",       d:[77,64], m:[72,73] , p:[70,71] },
+  { id:"contact", img:"obj-contact", name:"Contact", plain:"Start a project",  d:[56,84], m:[42,85] , p:[40,88] },
 ];
 const WORLD_POS = { d:[[30,36],[68,30],[56,64]], m:[[36,22],[60,43],[38,64]] };
 
@@ -1163,19 +1167,20 @@ function renderNodes(){
   const m = isMobile() ? "m" : "d";
   document.body.classList.toggle("m", m === "m");
   if (m === "m"){
-    rootNodes.innerHTML = `<div class="mstack"><p class="mcap">Tap a destination</p>${DESTS.map(n => `
-      <button class="node mrow" data-dest="${n.id}">
-        <span class="obj">${ART[n.id]()}</span>
-        <span class="txt"><b>${n.name}</b><em>${n.plain}</em></span><span class="go" aria-hidden="true">›</span>
-      </button>`).join("")}</div>`;
+    // phones: the same constellation, stretched downward, scrolled with a thumb
+    const pts = DESTS.map(n => n.p);
+    rootNodes.innerHTML = `<div class="mfield"><p class="mcap">Tap a destination</p>
+      <svg class="mlines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts.map(q => q.join(",")).join(" ")}"/></svg>
+      ${DESTS.map(n => `<button class="node mnode${n.big ? " big" : ""}" data-dest="${n.id}" style="left:${n.p[0]}%;top:${n.p[1]}%">
+        <span class="obj" data-o="${n.id}">${ART[n.id]()}</span><b>${n.name}</b><em>${n.plain}</em></button>`).join("")}</div>`;
   } else
   rootNodes.innerHTML = DESTS.map(n => `
     <button class="node${n.big?" big":""}" data-dest="${n.id}" style="left:${n[m][0]}%;top:${n[m][1]}%">
-      <span class="obj">${ART[n.id]()}</span><b>${n.name}</b><em>${n.plain}</em>
+      <span class="obj" data-o="${n.id}">${ART[n.id]()}</span><b>${n.name}</b><em>${n.plain}</em>
     </button>`).join("");
   worldNodes.innerHTML = PROJECTS.map((p,i) => `
     <button class="node planet" data-project="${i}" style="left:${WORLD_POS[m][i][0]}%;top:${WORLD_POS[m][i][1]}%">
-      <span class="obj">${ART.planet(p.look)}</span>
+      <span class="obj" data-o="planet-${p.look}">${ART.planet(p.look)}</span>
       <b>${p.name}</b><em>${p.built}</em>
     </button>`).join("");
   const order = ["orbit","systems","polus","contact","process","worlds","orbit"];
@@ -1201,6 +1206,7 @@ function arrive(){
   document.body.classList.add("inside");
   buildStars(); renderNodes();
   spaceOn = true; space.classList.add("on"); setScene("arrive");
+  import("./assets/objects3d.js").then(m => m.start()).catch(() => {});
   requestAnimationFrame(drawSpace);
   cam.zoom = .22;
   flyTo(1, gateAnchor.x || innerWidth/2, gateAnchor.y || innerHeight/2, 2800, easeOut);
